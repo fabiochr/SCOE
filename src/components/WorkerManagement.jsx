@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Phone, User, Wrench, X } from 'lucide-react';
 
-const WorkerManagement = ({ workers, setWorkers, language, translations }) => {
+const WorkerManagement = ({ workers, setWorkers, language, translations, serviceTypes }) => {
   const [isAddingWorker, setIsAddingWorker] = useState(false);
   const [editingWorker, setEditingWorker] = useState(null);
   const [formData, setFormData] = useState({
@@ -11,7 +11,8 @@ const WorkerManagement = ({ workers, setWorkers, language, translations }) => {
     active: true
   });
 
-  const specialties = [
+  // Get translated service types
+  const specialties = serviceTypes ? serviceTypes.map(s => s[language]) : [
     'Painting', 'Plumbing', 'Electrical', 'Carpentry', 
     'Roofing', 'Flooring', 'HVAC', 'General Contractor',
     'Masonry', 'Landscaping', 'Drywall', 'Insulation'

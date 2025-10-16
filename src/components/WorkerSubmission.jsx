@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Camera, Send, MapPin, Calendar, DollarSign, User, Wrench, X } from 'lucide-react';
 
-const WorkerSubmission = ({ onSubmit, workers, language, translations }) => {
+const WorkerSubmission = ({ onSubmit, workers, language, translations, serviceTypes }) => {
   const [formData, setFormData] = useState({
     workerId: '',
     serviceType: '',
@@ -23,7 +23,8 @@ const WorkerSubmission = ({ onSubmit, workers, language, translations }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showOtherPaymentInput, setShowOtherPaymentInput] = useState(false);
 
-  const serviceTypes = [
+  // Get translated service types
+  const translatedServiceTypes = serviceTypes ? serviceTypes.map(s => s[language]) : [
     'Painting', 'Plumbing', 'Electrical', 'Carpentry',
     'Roofing', 'Flooring', 'HVAC', 'General Contractor'
   ];
@@ -51,7 +52,7 @@ const WorkerSubmission = ({ onSubmit, workers, language, translations }) => {
     }
 
     // Extract service type
-    serviceTypes.forEach(service => {
+    translatedServiceTypes.forEach(service => {
       if (fullText.toLowerCase().includes(service.toLowerCase())) {
         extracted.serviceType = service;
       }
@@ -311,7 +312,7 @@ const WorkerSubmission = ({ onSubmit, workers, language, translations }) => {
                     required
                   >
                     <option value="">{translations[language].selectServiceType}</option>
-                    {serviceTypes.map(type => (
+                    {translatedServiceTypes.map(type => (
                       <option key={type} value={type}>{type}</option>
                     ))}
                   </select>

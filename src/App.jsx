@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
+import Auth from './components/Auth';
 import { User, FileText, BarChart3, Settings, Menu, X } from 'lucide-react';
 import WorkerSubmission from './components/WorkerSubmission';
 import Dashboard from './components/Dashboard';
@@ -7,11 +9,58 @@ import WorkerManagement from './components/WorkerManagement';
 import LanguageSelector from './components/LanguageSelector';
 
 function App() {
+  const [session, setSession] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      if (session) {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
+        if (error) console.error("Error fetching user role:", error.message);
+        else setUserRole(profile.role);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session);
+      if (session) {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
+        if (error) console.error("Error fetching user role:", error.message);
+        else setUserRole(profile.role);
+      } else {
+        setUserRole(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+  
   const [activeTab, setActiveTab] = useState('submission');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [jobs, setJobs] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [language, setLanguage] = useState('en');
+
+  // Service types array for translations
+  const serviceTypesData = [
+    { key: 'painting', en: 'Painting', pt: 'Pintura', fr: 'Peinture', es: 'Pintura', de: 'Malerei' },
+    { key: 'plumbing', en: 'Plumbing', pt: 'Encanamento', fr: 'Plomberie', es: 'Fontanería', de: 'Sanitär' },
+    { key: 'electrical', en: 'Electrical', pt: 'Elétrica', fr: 'Électricité', es: 'Eléctrica', de: 'Elektrik' },
+    { key: 'carpentry', en: 'Carpentry', pt: 'Carpintaria', fr: 'Menuiserie', es: 'Carpintería', de: 'Tischlerei' },
+    { key: 'roofing', en: 'Roofing', pt: 'Telhado', fr: 'Toiture', es: 'Techado', de: 'Dachdeckung' },
+    { key: 'flooring', en: 'Flooring', pt: 'Piso', fr: 'Revêtement de Sol', es: 'Pisos', de: 'Bodenbelag' },
+    { key: 'hvac', en: 'HVAC', pt: 'HVAC', fr: 'CVC', es: 'HVAC', de: 'HLK' },
+    { key: 'generalContractor', en: 'General Contractor', pt: 'Empreiteiro Geral', fr: 'Entrepreneur Général', es: 'Contratista General', de: 'Generalunternehmer' }
+  ];
 
   // Language translations
   const translations = {
@@ -32,8 +81,8 @@ function App() {
       submissionSuccess: 'Job submission successful!',
       workerSubmissionTitle: 'Worker Job Submission',
       workerSubmissionDescription: 'Submit job completion details with AI-powered data extraction',
-      quickAISubmission: 'Quick Job Details Input', // Changed title
-      aiSubmissionDescription: 'Enter job details below. AI will help parse and pre-fill the form.', // New description
+      quickAISubmission: 'Quick Job Details Input',
+      aiSubmissionDescription: 'Enter job details below. AI will help parse and pre-fill the form.',
       jobDescription: 'Job Description',
       jobAddress: 'Job Address',
       jobValue: 'Job Value',
@@ -133,6 +182,8 @@ function App() {
       jobsSelected: 'jobs selected',
       total: 'Total',
       generatePdfInvoice: 'Generate PDF Invoice',
+      // Service Types - dynamically generated from serviceTypesData
+      ...Object.fromEntries(serviceTypesData.map(s => [s.key, s.en]))
     },
     pt: {
       appTitle: 'Gerenciador ConstructAI',
@@ -152,30 +203,30 @@ function App() {
       workerSubmissionTitle: 'Envio de Trabalho do Trabalhador',
       workerSubmissionDescription: 'Envie detalhes de conclusão de trabalho com extração de dados por IA',
       quickAISubmission: 'Entrada Rápida de Detalhes do Trabalho',
-      aiSubmissionDescription: 'Insira os detalhes do trabalho abaixo. A IA ajudar\u00e1 a analisar e preencher o formul\u00e1rio.',
-      jobDescription: 'Descri\u00e7\u00e3o do Trabalho',
-      jobAddress: 'Endere\u00e7o do Trabalho',
+      aiSubmissionDescription: 'Insira os detalhes do trabalho abaixo. A IA ajudará a analisar e preencher o formulário.',
+      jobDescription: 'Descrição do Trabalho',
+      jobAddress: 'Endereço do Trabalho',
       jobValue: 'Valor do Trabalho',
-      additionalInfo: 'Informa\u00e7\u00f5es Adicionais',
-      parseAndFill: 'Analisar e Preencher Formul\u00e1rio',
+      additionalInfo: 'Informações Adicionais',
+      parseAndFill: 'Analisar e Preencher Formulário',
       processing: 'Processando...',
       worker: 'Trabalhador',
       selectWorker: 'Selecionar Trabalhador',
-      serviceType: 'Tipo de Servi\u00e7o',
-      selectServiceType: 'Selecionar Tipo de Servi\u00e7o',
-      location: 'Localiza\u00e7\u00e3o',
+      serviceType: 'Tipo de Serviço',
+      selectServiceType: 'Selecionar Tipo de Serviço',
+      location: 'Localização',
       jobDate: 'Data do Trabalho',
-      description: 'Descri\u00e7\u00e3o',
+      description: 'Descrição',
       amount: 'Valor',
-      paymentMethod: 'M\u00e9todo de Pagamento',
+      paymentMethod: 'Método de Pagamento',
       uploadImages: 'Carregar Imagens',
       submitJob: 'Enviar Trabalho',
       remove: 'Remover',
       clickToUpload: 'Clique para carregar',
       orDragAndDrop: 'ou arraste e solte',
-      imageFormats: 'SVG, PNG, JPG ou GIF (M\u00c1X. 800x400px)',
+      imageFormats: 'SVG, PNG, JPG ou GIF (MÁX. 800x400px)',
       // Dashboard
-      dashboardTitle: 'Painel de Gest\u00e3o',
+      dashboardTitle: 'Painel de Gestão',
       dashboardDescription: 'Monitore envios de trabalho e gerencie pagamentos',
       totalJobs: 'Total de Trabalhos',
       totalValue: 'Valor Total',
@@ -186,39 +237,39 @@ function App() {
       statusPending: 'Pendente',
       statusPaid: 'Pago',
       statusOverdue: 'Atrasado',
-      allServices: 'Todos os Servi\u00e7os',
+      allServices: 'Todos os Serviços',
       generateInvoice: 'Gerar Fatura',
       jobDetails: 'Detalhes do Trabalho',
       date: 'Data',
       images: 'Imagens',
       close: 'Fechar',
       editJob: 'Editar Trabalho',
-      saveChanges: 'Salvar Altera\u00e7\u00f5es',
+      saveChanges: 'Salvar Alterações',
       cancel: 'Cancelar',
       markPaid: 'Marcar como Pago',
       noJobsFound: 'Nenhum trabalho encontrado para os filtros.',
-      actions: 'A\u00e7\u00f5es',
+      actions: 'Ações',
       // Reports
-      reportsTitle: 'Relat\u00f3rios e An\u00e1lises',
-      reportsDescription: 'Insights de neg\u00f3cios e m\u00e9tricas de desempenho',
-      startDate: 'Data de In\u00edcio',
-      endDate: 'Data de T\u00e9rmino',
+      reportsTitle: 'Relatórios e Análises',
+      reportsDescription: 'Insights de negócios e métricas de desempenho',
+      startDate: 'Data de Início',
+      endDate: 'Data de Término',
       allWorkers: 'Todos os Trabalhadores',
-      service: 'Servi\u00e7o',
+      service: 'Serviço',
       exportCSV: 'Exportar CSV',
       totalRevenue: 'Receita Total',
       paidAmount: 'Valor Pago',
       pendingAmount: 'Valor Pendente',
       workerPerformance: 'Desempenho do Trabalhador',
-      jobsCompleted: 'trabalhos conclu\u00eddos',
-      avg: 'm\u00e9dia',
-      serviceTypeBreakdown: 'Detalhes por Tipo de Servi\u00e7o',
+      jobsCompleted: 'trabalhos concluídos',
+      avg: 'média',
+      serviceTypeBreakdown: 'Detalhes por Tipo de Serviço',
       jobs: 'trabalhos',
-      monthRevenueTrend: 'Tend\u00eancia de Receita (6 meses)',
+      monthRevenueTrend: 'Tendência de Receita (6 meses)',
       recentJobs: 'Trabalhos Recentes',
       // WorkerManagement
-      workerManagementTitle: 'Gest\u00e3o de Trabalhadores',
-      workerManagementDescription: 'Gerencie sua equipe de constru\u00e7\u00e3o',
+      workerManagementTitle: 'Gestão de Trabalhadores',
+      workerManagementDescription: 'Gerencie sua equipe de construção',
       addWorker: 'Adicionar Trabalhador',
       active: 'Ativo',
       inactive: 'Inativo',
@@ -229,29 +280,31 @@ function App() {
       confirmDeleteWorker: 'Tem certeza de que deseja excluir este trabalhador?',
       addNewWorker: 'Adicionar Novo Trabalhador',
       fullName: 'Nome Completo',
-      phoneNumber: 'N\u00famero de Telefone',
+      phoneNumber: 'Número de Telefone',
       specialty: 'Especialidade',
       selectSpecialty: 'Selecionar Especialidade',
-      activeWorkerDescription: 'Trabalhador ativo (pode receber atribui\u00e7\u00f5es de trabalho)',
+      activeWorkerDescription: 'Trabalhador ativo (pode receber atribuições de trabalho)',
       updateWorker: 'Atualizar Trabalhador',
       noWorkersYet: 'Nenhum trabalhador ainda',
-      getStartedAddWorker: 'Comece adicionando seu primeiro trabalhador \u00e0 equipe.',
+      getStartedAddWorker: 'Comece adicionando seu primeiro trabalhador à equipe.',
       addYourFirstWorker: 'Adicionar Seu Primeiro Trabalhador',
       fillNameSpecialty: 'Por favor, preencha nome e especialidade',
       editWorker: 'Editar Trabalhador',
       // InvoiceGenerator
       generateInvoiceTitle: 'Gerar Fatura',
-      invoiceInformation: 'Informa\u00e7\u00f5es da Fatura',
-      invoiceNumber: 'N\u00famero da Fatura',
+      invoiceInformation: 'Informações da Fatura',
+      invoiceNumber: 'Número da Fatura',
       invoiceDate: 'Data da Fatura',
       dueDate: 'Data de Vencimento',
       clientName: 'Nome do Cliente',
-      clientAddress: 'Endere\u00e7o do Cliente',
+      clientAddress: 'Endereço do Cliente',
       notes: 'Notas',
       selectJobsToInclude: 'Selecionar Trabalhos para Incluir',
       jobsSelected: 'trabalhos selecionados',
       total: 'Total',
       generatePdfInvoice: 'Gerar Fatura em PDF',
+      // Service Types
+      ...Object.fromEntries(serviceTypesData.map(s => [s.key, s.pt]))
     },
     fr: {
       appTitle: 'Gestionnaire ConstructAI',
@@ -260,161 +313,163 @@ function App() {
       reports: 'Rapports',
       workerManagement: 'Gestion des Travailleurs',
       // WorkerSubmission
-      cash: 'Esp\u00e8ces',
+      cash: 'Espèces',
       bankTransfer: 'Virement Bancaire',
-      check: 'Ch\u00e8que',
-      creditCard: 'Carte de Cr\u00e9dit',
+      check: 'Chèque',
+      creditCard: 'Carte de Crédit',
       otherPayment: 'Autre',
-      specifyOtherPayment: 'Sp\u00e9cifier un autre mode de paiement',
+      specifyOtherPayment: 'Spécifier un autre mode de paiement',
       fillRequiredFields: 'Veuillez remplir tous les champs obligatoires',
-      submissionSuccess: 'Soumission de travail r\u00e9ussie !',
-      workerSubmissionTitle: 'Soumission de Travail des Ouvriers',
-      workerSubmissionDescription: 'Soumettez les d\u00e9tails d\'ach\u00e8vement des travaux avec extraction de donn\u00e9es par IA',
-      quickAISubmission: 'Saisie Rapide des D\u00e9tails du Travail',
-      aiSubmissionDescription: 'Entrez les d\u00e9tails du travail ci-dessous. L\'IA aidera \u00e0 analyser et \u00e0 pr\u00e9-remplir le formulaire.',
+      submissionSuccess: 'Soumission de travail réussie!',
+      workerSubmissionTitle: 'Soumission de Travail du Travailleur',
+      workerSubmissionDescription: 'Soumettre les détails d\'achèvement du travail avec extraction de données par IA',
+      quickAISubmission: 'Saisie Rapide des Détails du Travail',
+      aiSubmissionDescription: 'Entrez les détails du travail ci-dessous. L\'IA aidera à analyser et pré-remplir le formulaire.',
       jobDescription: 'Description du Travail',
       jobAddress: 'Adresse du Travail',
       jobValue: 'Valeur du Travail',
-      additionalInfo: 'Informations Compl\u00e9mentaires',
+      additionalInfo: 'Informations Supplémentaires',
       parseAndFill: 'Analyser et Remplir le Formulaire',
-      processing: 'Traitement...',
-      worker: 'Ouvrier',
-      selectWorker: 'S\u00e9lectionner un Ouvrier',
+      processing: 'Traitement en cours...',
+      worker: 'Travailleur',
+      selectWorker: 'Sélectionner un Travailleur',
       serviceType: 'Type de Service',
-      selectServiceType: 'S\u00e9lectionner le Type de Service',
+      selectServiceType: 'Sélectionner le Type de Service',
       location: 'Emplacement',
       jobDate: 'Date du Travail',
       description: 'Description',
       amount: 'Montant',
-      paymentMethod: 'M\u00e9thode de Paiement',
-      uploadImages: 'T\u00e9l\u00e9charger des Images',
+      paymentMethod: 'Mode de Paiement',
+      uploadImages: 'Télécharger des Images',
       submitJob: 'Soumettre le Travail',
       remove: 'Supprimer',
-      clickToUpload: 'Cliquez pour t\u00e9l\u00e9charger',
-      orDragAndDrop: 'ou glissez-d\u00e9posez',
+      clickToUpload: 'Cliquez pour télécharger',
+      orDragAndDrop: 'ou glissez-déposez',
       imageFormats: 'SVG, PNG, JPG ou GIF (MAX. 800x400px)',
       // Dashboard
       dashboardTitle: 'Tableau de Bord de Gestion',
-      dashboardDescription: 'Surveiller les soumissions de travaux et g\u00e9rer les paiements',
+      dashboardDescription: 'Surveiller les soumissions de travaux et gérer les paiements',
       totalJobs: 'Total des Travaux',
       totalValue: 'Valeur Totale',
-      paid: 'Pay\u00e9',
+      paid: 'Payé',
       pending: 'En Attente',
       searchJobsPlaceholder: 'Rechercher des travaux...',
       allStatus: 'Tous les Statuts',
       statusPending: 'En Attente',
-      statusPaid: 'Pay\u00e9',
+      statusPaid: 'Payé',
       statusOverdue: 'En Retard',
       allServices: 'Tous les Services',
-      generateInvoice: 'G\u00e9n\u00e9rer une Facture',
-      jobDetails: 'D\u00e9tails du Travail',
+      generateInvoice: 'Générer une Facture',
+      jobDetails: 'Détails du Travail',
       date: 'Date',
       images: 'Images',
       close: 'Fermer',
       editJob: 'Modifier le Travail',
       saveChanges: 'Enregistrer les Modifications',
       cancel: 'Annuler',
-      markPaid: 'Marquer comme Pay\u00e9',
-      noJobsFound: 'Aucun travail trouv\u00e9 correspondant \u00e0 vos filtres.',
+      markPaid: 'Marquer comme Payé',
+      noJobsFound: 'Aucun travail trouvé correspondant à vos filtres.',
       actions: 'Actions',
       // Reports
       reportsTitle: 'Rapports et Analyses',
-      reportsDescription: 'Informations commerciales et m\u00e9triques de performance',
-      startDate: 'Date de D\u00e9but',
+      reportsDescription: 'Perspectives commerciales et métriques de performance',
+      startDate: 'Date de Début',
       endDate: 'Date de Fin',
-      allWorkers: 'Tous les Ouvriers',
+      allWorkers: 'Tous les Travailleurs',
       service: 'Service',
       exportCSV: 'Exporter CSV',
       totalRevenue: 'Revenu Total',
-      paidAmount: 'Montant Pay\u00e9',
-      pendingAmount: 'Montant en Attente',
-      workerPerformance: 'Performance des Ouvriers',
-      jobsCompleted: 'travaux termin\u00e9s',
-      avg: 'moyenne',
-      serviceTypeBreakdown: 'R\u00e9partition par Type de Service',
+      paidAmount: 'Montant Payé',
+      pendingAmount: 'Montant En Attente',
+      workerPerformance: 'Performance du Travailleur',
+      jobsCompleted: 'travaux terminés',
+      avg: 'moy',
+      serviceTypeBreakdown: 'Répartition par Type de Service',
       jobs: 'travaux',
-      monthRevenueTrend: 'Tendance des Revenus sur 6 Mois',
-      recentJobs: 'Travaux R\u00e9cents',
+      monthRevenueTrend: 'Tendance des Revenus (6 mois)',
+      recentJobs: 'Travaux Récents',
       // WorkerManagement
-      workerManagementTitle: 'Gestion des Ouvriers',
-      workerManagementDescription: 'G\u00e9rez votre \u00e9quipe de construction',
-      addWorker: 'Ajouter un Ouvrier',
+      workerManagementTitle: 'Gestion des Travailleurs',
+      workerManagementDescription: 'Gérez votre équipe de construction',
+      addWorker: 'Ajouter un Travailleur',
       active: 'Actif',
       inactive: 'Inactif',
       edit: 'Modifier',
-      deactivate: 'D\u00e9sactiver',
+      deactivate: 'Désactiver',
       activate: 'Activer',
       delete: 'Supprimer',
-      confirmDeleteWorker: '\u00cates-vous s\u00fbr de vouloir supprimer cet ouvrier ?',
-      addNewWorker: 'Ajouter un Nouvel Ouvrier',
+      confirmDeleteWorker: 'Êtes-vous sûr de vouloir supprimer ce travailleur?',
+      addNewWorker: 'Ajouter un Nouveau Travailleur',
       fullName: 'Nom Complet',
-      phoneNumber: 'Num\u00e9ro de T\u00e9l\u00e9phone',
-      specialty: 'Sp\u00e9cialit\u00e9',
-      selectSpecialty: 'S\u00e9lectionner la Sp\u00e9cialit\u00e9',
-      activeWorkerDescription: 'Ouvrier actif (peut recevoir des affectations de travail)',
-      updateWorker: 'Mettre \u00e0 Jour l\'Ouvrier',
-      noWorkersYet: 'Aucun ouvrier pour le moment',
-      getStartedAddWorker: 'Commencez par ajouter votre premier ouvrier \u00e0 l\'\u00e9quipe.',
-      addYourFirstWorker: 'Ajouter Votre Premier Ouvrier',
-      fillNameSpecialty: 'Veuillez remplir le nom et la sp\u00e9cialit\u00e9',
-      editWorker: 'Modifier l\'Ouvrier',
+      phoneNumber: 'Numéro de Téléphone',
+      specialty: 'Spécialité',
+      selectSpecialty: 'Sélectionner la Spécialité',
+      activeWorkerDescription: 'Travailleur actif (peut recevoir des affectations de travail)',
+      updateWorker: 'Mettre à Jour le Travailleur',
+      noWorkersYet: 'Aucun travailleur pour le moment',
+      getStartedAddWorker: 'Commencez en ajoutant votre premier travailleur à l\'équipe.',
+      addYourFirstWorker: 'Ajouter Votre Premier Travailleur',
+      fillNameSpecialty: 'Veuillez remplir le nom et la spécialité',
+      editWorker: 'Modifier le Travailleur',
       // InvoiceGenerator
-      generateInvoiceTitle: 'G\u00e9n\u00e9rer une Facture',
+      generateInvoiceTitle: 'Générer une Facture',
       invoiceInformation: 'Informations sur la Facture',
-      invoiceNumber: 'Num\u00e9ro de Facture',
+      invoiceNumber: 'Numéro de Facture',
       invoiceDate: 'Date de la Facture',
-      dueDate: 'Date d\'\u00e9ch\u00e9ance',
+      dueDate: 'Date d\'Échéance',
       clientName: 'Nom du Client',
       clientAddress: 'Adresse du Client',
       notes: 'Notes',
-      selectJobsToInclude: 'S\u00e9lectionner les Travaux \u00e0 Inclure',
-      jobsSelected: 'travaux s\u00e9lectionn\u00e9s',
+      selectJobsToInclude: 'Sélectionner les Travaux à Inclure',
+      jobsSelected: 'travaux sélectionnés',
       total: 'Total',
-      generatePdfInvoice: 'G\u00e9n\u00e9rer la Facture PDF',
+      generatePdfInvoice: 'Générer une Facture PDF',
+      // Service Types
+      ...Object.fromEntries(serviceTypesData.map(s => [s.key, s.fr]))
     },
     es: {
-      appTitle: 'Administrador ConstructAI',
-      workerSubmission: 'Env\u00edo de Trabajadores',
-      managementDashboard: 'Panel de Gesti\u00f3n',
+      appTitle: 'Gerente ConstructAI',
+      workerSubmission: 'Envío de Trabajadores',
+      managementDashboard: 'Panel de Gestión',
       reports: 'Informes',
-      workerManagement: 'Gesti\u00f3n de Trabajadores',
+      workerManagement: 'Gestión de Trabajadores',
       // WorkerSubmission
       cash: 'Efectivo',
       bankTransfer: 'Transferencia Bancaria',
       check: 'Cheque',
-      creditCard: 'Tarjeta de Cr\u00e9dito',
+      creditCard: 'Tarjeta de Crédito',
       otherPayment: 'Otro',
-      specifyOtherPayment: 'Especificar otro m\u00e9todo de pago',
+      specifyOtherPayment: 'Especificar otro método de pago',
       fillRequiredFields: 'Por favor, complete todos los campos obligatorios',
-      submissionSuccess: '\u00a1Env\u00edo de trabajo exitoso!',
-      workerSubmissionTitle: 'Env\u00edo de Trabajo del Trabajador',
-      workerSubmissionDescription: 'Env\u00ede los detalles de finalizaci\u00f3n del trabajo con extracci\u00f3n de datos impulsada por IA',
-      quickAISubmission: 'Entrada R\u00e1pida de Detalles del Trabajo',
-      aiSubmissionDescription: 'Ingrese los detalles del trabajo a continuaci\u00f3n. La IA ayudar\u00e1 a analizar y prellenar el formulario.',
-      jobDescription: 'Descripci\u00f3n del Trabajo',
-      jobAddress: 'Direcci\u00f3n del Trabajo',
+      submissionSuccess: '¡Envío de trabajo exitoso!',
+      workerSubmissionTitle: 'Envío de Trabajo del Trabajador',
+      workerSubmissionDescription: 'Enviar detalles de finalización del trabajo con extracción de datos por IA',
+      quickAISubmission: 'Entrada Rápida de Detalles del Trabajo',
+      aiSubmissionDescription: 'Ingrese los detalles del trabajo a continuación. La IA ayudará a analizar y prellenar el formulario.',
+      jobDescription: 'Descripción del Trabajo',
+      jobAddress: 'Dirección del Trabajo',
       jobValue: 'Valor del Trabajo',
-      additionalInfo: 'Informaci\u00f3n Adicional',
+      additionalInfo: 'Información Adicional',
       parseAndFill: 'Analizar y Rellenar Formulario',
       processing: 'Procesando...',
       worker: 'Trabajador',
       selectWorker: 'Seleccionar Trabajador',
       serviceType: 'Tipo de Servicio',
       selectServiceType: 'Seleccionar Tipo de Servicio',
-      location: 'Ubicaci\u00f3n',
+      location: 'Ubicación',
       jobDate: 'Fecha del Trabajo',
-      description: 'Descripci\u00f3n',
+      description: 'Descripción',
       amount: 'Monto',
-      paymentMethod: 'M\u00e9todo de Pago',
-      uploadImages: 'Subir Im\u00e1genes',
+      paymentMethod: 'Método de Pago',
+      uploadImages: 'Subir Imágenes',
       submitJob: 'Enviar Trabajo',
       remove: 'Eliminar',
       clickToUpload: 'Haga clic para subir',
       orDragAndDrop: 'o arrastre y suelte',
-      imageFormats: 'SVG, PNG, JPG o GIF (M\u00c1X. 800x400px)',
+      imageFormats: 'SVG, PNG, JPG o GIF (MÁX. 800x400px)',
       // Dashboard
-      dashboardTitle: 'Panel de Gesti\u00f3n',
-      dashboardDescription: 'Supervise los env\u00edos de trabajo y gestione los pagos',
+      dashboardTitle: 'Panel de Gestión',
+      dashboardDescription: 'Monitorear envíos de trabajos y gestionar pagos',
       totalJobs: 'Total de Trabajos',
       totalValue: 'Valor Total',
       paid: 'Pagado',
@@ -428,7 +483,7 @@ function App() {
       generateInvoice: 'Generar Factura',
       jobDetails: 'Detalles del Trabajo',
       date: 'Fecha',
-      images: 'Im\u00e1genes',
+      images: 'Imágenes',
       close: 'Cerrar',
       editJob: 'Editar Trabajo',
       saveChanges: 'Guardar Cambios',
@@ -437,8 +492,8 @@ function App() {
       noJobsFound: 'No se encontraron trabajos que coincidan con sus filtros.',
       actions: 'Acciones',
       // Reports
-      reportsTitle: 'Informes y An\u00e1lisis',
-      reportsDescription: 'Informaci\u00f3n comercial y m\u00e9tricas de rendimiento',
+      reportsTitle: 'Informes y Análisis',
+      reportsDescription: 'Perspectivas comerciales y métricas de rendimiento',
       startDate: 'Fecha de Inicio',
       endDate: 'Fecha de Fin',
       allWorkers: 'Todos los Trabajadores',
@@ -449,14 +504,14 @@ function App() {
       pendingAmount: 'Monto Pendiente',
       workerPerformance: 'Rendimiento del Trabajador',
       jobsCompleted: 'trabajos completados',
-      avg: 'promedio',
+      avg: 'prom',
       serviceTypeBreakdown: 'Desglose por Tipo de Servicio',
       jobs: 'trabajos',
-      monthRevenueTrend: 'Tendencia de Ingresos de 6 Meses',
+      monthRevenueTrend: 'Tendencia de Ingresos (6 meses)',
       recentJobs: 'Trabajos Recientes',
       // WorkerManagement
-      workerManagementTitle: 'Gesti\u00f3n de Trabajadores',
-      workerManagementDescription: 'Gestione su equipo de construcci\u00f3n',
+      workerManagementTitle: 'Gestión de Trabajadores',
+      workerManagementDescription: 'Administre su equipo de construcción',
       addWorker: 'Agregar Trabajador',
       active: 'Activo',
       inactive: 'Inactivo',
@@ -464,100 +519,102 @@ function App() {
       deactivate: 'Desactivar',
       activate: 'Activar',
       delete: 'Eliminar',
-      confirmDeleteWorker: '\u00bfEst\u00e1 seguro de que desea eliminar a este trabajador?',
+      confirmDeleteWorker: '¿Está seguro de que desea eliminar este trabajador?',
       addNewWorker: 'Agregar Nuevo Trabajador',
       fullName: 'Nombre Completo',
-      phoneNumber: 'N\u00famero de Tel\u00e9fono',
+      phoneNumber: 'Número de Teléfono',
       specialty: 'Especialidad',
       selectSpecialty: 'Seleccionar Especialidad',
       activeWorkerDescription: 'Trabajador activo (puede recibir asignaciones de trabajo)',
       updateWorker: 'Actualizar Trabajador',
-      noWorkersYet: 'A\u00fan no hay trabajadores',
+      noWorkersYet: 'Aún no hay trabajadores',
       getStartedAddWorker: 'Comience agregando su primer trabajador al equipo.',
       addYourFirstWorker: 'Agregar Su Primer Trabajador',
-      fillNameSpecialty: 'Por favor, complete el nombre y la especialidad',
+      fillNameSpecialty: 'Por favor, complete nombre y especialidad',
       editWorker: 'Editar Trabajador',
       // InvoiceGenerator
       generateInvoiceTitle: 'Generar Factura',
-      invoiceInformation: 'Informaci\u00f3n de la Factura',
-      invoiceNumber: 'N\u00famero de Factura',
+      invoiceInformation: 'Información de la Factura',
+      invoiceNumber: 'Número de Factura',
       invoiceDate: 'Fecha de la Factura',
       dueDate: 'Fecha de Vencimiento',
       clientName: 'Nombre del Cliente',
-      clientAddress: 'Direcci\u00f3n del Cliente',
+      clientAddress: 'Dirección del Cliente',
       notes: 'Notas',
       selectJobsToInclude: 'Seleccionar Trabajos para Incluir',
       jobsSelected: 'trabajos seleccionados',
       total: 'Total',
-      generatePdfInvoice: 'Generar Factura en PDF',
+      generatePdfInvoice: 'Generar Factura PDF',
+      // Service Types
+      ...Object.fromEntries(serviceTypesData.map(s => [s.key, s.es]))
     },
     de: {
       appTitle: 'ConstructAI Manager',
-      workerSubmission: 'Arbeiter\u00fcbermittlung',
+      workerSubmission: 'Arbeiter-Einreichung',
       managementDashboard: 'Management-Dashboard',
       reports: 'Berichte',
       workerManagement: 'Arbeiterverwaltung',
       // WorkerSubmission
       cash: 'Bargeld',
-      bankTransfer: 'Bank\u00fcberweisung',
+      bankTransfer: 'Banküberweisung',
       check: 'Scheck',
       creditCard: 'Kreditkarte',
       otherPayment: 'Andere',
       specifyOtherPayment: 'Andere Zahlungsmethode angeben',
-      fillRequiredFields: 'Bitte f\u00fcllen Sie alle Pflichtfelder aus',
-      submissionSuccess: 'Auftrags\u00fcbermittlung erfolgreich!',
-      workerSubmissionTitle: 'Arbeiter-Auftrags\u00fcbermittlung',
-      workerSubmissionDescription: '\u00dcbermitteln Sie Auftragsabschlussdetails mit KI-gest\u00fctzter Datenextraktion',
+      fillRequiredFields: 'Bitte füllen Sie alle Pflichtfelder aus',
+      submissionSuccess: 'Auftragsübermittlung erfolgreich!',
+      workerSubmissionTitle: 'Arbeiter-Auftragsübermittlung',
+      workerSubmissionDescription: 'Übermitteln Sie Auftragsabschlussdetails mit KI-gestützter Datenextraktion',
       quickAISubmission: 'Schnelle Auftragseingabe',
-      aiSubmissionDescription: 'Geben Sie die Auftragsdetails unten ein. Die KI hilft beim Parsen und Vorabausf\u00fcllen des Formulars.',
+      aiSubmissionDescription: 'Geben Sie die Auftragsdetails unten ein. Die KI hilft beim Parsen und Vorabausfüllen des Formulars.',
       jobDescription: 'Auftragsbeschreibung',
       jobAddress: 'Auftragsadresse',
       jobValue: 'Auftragswert',
-      additionalInfo: 'Zus\u00e4tzliche Informationen',
-      parseAndFill: 'Parsen & Formular ausf\u00fcllen',
+      additionalInfo: 'Zusätzliche Informationen',
+      parseAndFill: 'Parsen & Formular ausfüllen',
       processing: 'Verarbeitung...',
       worker: 'Arbeiter',
-      selectWorker: 'Arbeiter ausw\u00e4hlen',
+      selectWorker: 'Arbeiter auswählen',
       serviceType: 'Dienstleistungstyp',
-      selectServiceType: 'Dienstleistungstyp ausw\u00e4hlen',
+      selectServiceType: 'Dienstleistungstyp auswählen',
       location: 'Standort',
       jobDate: 'Auftragsdatum',
       description: 'Beschreibung',
       amount: 'Betrag',
       paymentMethod: 'Zahlungsmethode',
       uploadImages: 'Bilder hochladen',
-      submitJob: 'Auftrag \u00fcbermitteln',
+      submitJob: 'Auftrag übermitteln',
       remove: 'Entfernen',
       clickToUpload: 'Zum Hochladen klicken',
       orDragAndDrop: 'oder ziehen und ablegen',
       imageFormats: 'SVG, PNG, JPG oder GIF (MAX. 800x400px)',
       // Dashboard
       dashboardTitle: 'Management-Dashboard',
-      dashboardDescription: 'Auftrags\u00fcbermittlungen \u00fcberwachen und Zahlungen verwalten',
-      totalJobs: 'Gesamtanzahl Auftr\u00e4ge',
+      dashboardDescription: 'Auftragsübermittlungen überwachen und Zahlungen verwalten',
+      totalJobs: 'Gesamtanzahl Aufträge',
       totalValue: 'Gesamtwert',
       paid: 'Bezahlt',
       pending: 'Ausstehend',
-      searchJobsPlaceholder: 'Auftr\u00e4ge suchen...',
+      searchJobsPlaceholder: 'Aufträge suchen...',
       allStatus: 'Alle Status',
       statusPending: 'Ausstehend',
       statusPaid: 'Bezahlt',
-      statusOverdue: '\u00dcberf\u00e4llig',
+      statusOverdue: 'Überfällig',
       allServices: 'Alle Dienstleistungen',
       generateInvoice: 'Rechnung generieren',
       jobDetails: 'Auftragsdetails',
       date: 'Datum',
       images: 'Bilder',
-      close: 'Schlie\u00dfen',
+      close: 'Schließen',
       editJob: 'Auftrag bearbeiten',
-      saveChanges: '\u00c4nderungen speichern',
+      saveChanges: 'Änderungen speichern',
       cancel: 'Abbrechen',
       markPaid: 'Als bezahlt markieren',
-      noJobsFound: 'Keine Auftr\u00e4ge gefunden, die Ihren Filtern entsprechen.',
+      noJobsFound: 'Keine Aufträge gefunden, die Ihren Filtern entsprechen.',
       actions: 'Aktionen',
       // Reports
       reportsTitle: 'Berichte & Analysen',
-      reportsDescription: 'Gesch\u00e4ftseinblicke und Leistungsmetriken',
+      reportsDescription: 'Geschäftseinblicke und Leistungsmetriken',
       startDate: 'Startdatum',
       endDate: 'Enddatum',
       allWorkers: 'Alle Arbeiter',
@@ -567,48 +624,50 @@ function App() {
       paidAmount: 'Bezahlter Betrag',
       pendingAmount: 'Ausstehender Betrag',
       workerPerformance: 'Arbeiterleistung',
-      jobsCompleted: 'abgeschlossene Auftr\u00e4ge',
+      jobsCompleted: 'abgeschlossene Aufträge',
       avg: 'Durchschnitt',
-      serviceTypeBreakdown: 'Aufschl\u00fcsselung nach Dienstleistungstyp',
-      jobs: 'Auftr\u00e4ge',
+      serviceTypeBreakdown: 'Aufschlüsselung nach Dienstleistungstyp',
+      jobs: 'Aufträge',
       monthRevenueTrend: '6-Monats-Umsatztrend',
-      recentJobs: 'Aktuelle Auftr\u00e4ge',
+      recentJobs: 'Aktuelle Aufträge',
       // WorkerManagement
       workerManagementTitle: 'Arbeiterverwaltung',
       workerManagementDescription: 'Verwalten Sie Ihr Bauteam',
-      addWorker: 'Arbeiter hinzuf\u00fcgen',
+      addWorker: 'Arbeiter hinzufügen',
       active: 'Aktiv',
       inactive: 'Inaktiv',
       edit: 'Bearbeiten',
       deactivate: 'Deaktivieren',
       activate: 'Aktivieren',
-      delete: 'L\u00f6schen',
-      confirmDeleteWorker: 'Sind Sie sicher, dass Sie diesen Arbeiter l\u00f6schen m\u00f6chten?',
-      addNewWorker: 'Neuen Arbeiter hinzuf\u00fcgen',
-      fullName: 'Vollst\u00e4ndiger Name',
+      delete: 'Löschen',
+      confirmDeleteWorker: 'Sind Sie sicher, dass Sie diesen Arbeiter löschen möchten?',
+      addNewWorker: 'Neuen Arbeiter hinzufügen',
+      fullName: 'Vollständiger Name',
       phoneNumber: 'Telefonnummer',
-      specialty: 'Spezialit\u00e4t',
-      selectSpecialty: 'Spezialit\u00e4t ausw\u00e4hlen',
+      specialty: 'Spezialität',
+      selectSpecialty: 'Spezialität auswählen',
       activeWorkerDescription: 'Aktiver Arbeiter (kann Auftragszuweisungen erhalten)',
       updateWorker: 'Arbeiter aktualisieren',
       noWorkersYet: 'Noch keine Arbeiter',
-      getStartedAddWorker: 'Beginnen Sie, indem Sie Ihren ersten Arbeiter zum Team hinzuf\u00fcgen.',
-      addYourFirstWorker: 'Ersten Arbeiter hinzuf\u00fcgen',
-      fillNameSpecialty: 'Bitte Namen und Spezialit\u00e4t eingeben',
+      getStartedAddWorker: 'Beginnen Sie, indem Sie Ihren ersten Arbeiter zum Team hinzufügen.',
+      addYourFirstWorker: 'Ersten Arbeiter hinzufügen',
+      fillNameSpecialty: 'Bitte Namen und Spezialität eingeben',
       editWorker: 'Arbeiter bearbeiten',
       // InvoiceGenerator
       generateInvoiceTitle: 'Rechnung generieren',
       invoiceInformation: 'Rechnungsinformationen',
       invoiceNumber: 'Rechnungsnummer',
       invoiceDate: 'Rechnungsdatum',
-      dueDate: 'F\u00e4lligkeitsdatum',
+      dueDate: 'Fälligkeitsdatum',
       clientName: 'Kundenname',
       clientAddress: 'Kundenadresse',
       notes: 'Notizen',
-      selectJobsToInclude: 'Auftr\u00e4ge zur Aufnahme ausw\u00e4hlen',
-      jobsSelected: 'Auftr\u00e4ge ausgew\u00e4hlt',
+      selectJobsToInclude: 'Aufträge zur Aufnahme auswählen',
+      jobsSelected: 'Aufträge ausgewählt',
       total: 'Gesamt',
       generatePdfInvoice: 'PDF-Rechnung generieren',
+      // Service Types
+      ...Object.fromEntries(serviceTypesData.map(s => [s.key, s.de]))
     }
   };
 
@@ -673,27 +732,46 @@ function App() {
     setJobs(prev => prev.filter(job => job.id !== jobId));
   };
 
-  const navigation = [
-    { id: 'submission', name: translations[language].workerSubmission, icon: User },
-    { id: 'dashboard', name: translations[language].managementDashboard, icon: FileText },
-    { id: 'reports', name: translations[language].reports, icon: BarChart3 },
-    { id: 'workers', name: translations[language].workerManagement, icon: Settings }
+  const allNavigation = [
+    { id: 'submission', name: translations[language].workerSubmission, icon: User, roles: ['worker', 'manager'] },
+    { id: 'dashboard', name: translations[language].managementDashboard, icon: FileText, roles: ['manager'] },
+    { id: 'reports', name: translations[language].reports, icon: BarChart3, roles: ['manager'] },
+    { id: 'workers', name: translations[language].workerManagement, icon: Settings, roles: ['manager'] }
   ];
 
+  const navigation = allNavigation.filter(item => item.roles.includes(userRole));
+
   const renderActiveComponent = () => {
+    if (!userRole) return null; // Don't render anything until role is loaded
+
     switch (activeTab) {
       case 'submission':
-        return <WorkerSubmission onSubmit={addJob} workers={workers} language={language} translations={translations} />;
+        return userRole === 'worker' || userRole === 'manager' ? <WorkerSubmission onSubmit={addJob} workers={workers} language={language} translations={translations} serviceTypes={serviceTypesData} /> : null;
       case 'dashboard':
-        return <Dashboard jobs={jobs} workers={workers} onUpdateJob={updateJob} onDeleteJob={deleteJob} language={language} translations={translations} />;
+        return userRole === 'manager' ? <Dashboard jobs={jobs} workers={workers} onUpdateJob={updateJob} onDeleteJob={deleteJob} language={language} translations={translations} /> : null;
       case 'reports':
-        return <Reports jobs={jobs} workers={workers} language={language} translations={translations} />;
+        return userRole === 'manager' ? <Reports jobs={jobs} workers={workers} language={language} translations={translations} /> : null;
       case 'workers':
-        return <WorkerManagement workers={workers} setWorkers={setWorkers} language={language} translations={translations} />;
+        return userRole === 'manager' ? <WorkerManagement workers={workers} setWorkers={setWorkers} language={language} translations={translations} serviceTypes={serviceTypesData} /> : null;
       default:
-        return <WorkerSubmission onSubmit={addJob} workers={workers} language={language} translations={translations} />;
+        // Default to the first available tab for the user's role
+        const firstAllowedTab = navigation[0]?.id;
+        if (firstAllowedTab === 'submission') {
+          return <WorkerSubmission onSubmit={addJob} workers={workers} language={language} translations={translations} serviceTypes={serviceTypesData} />;
+        } else if (firstAllowedTab === 'dashboard') {
+          return <Dashboard jobs={jobs} workers={workers} onUpdateJob={updateJob} onDeleteJob={deleteJob} language={language} translations={translations} />;
+        } else if (firstAllowedTab === 'reports') {
+          return <Reports jobs={jobs} workers={workers} language={language} translations={translations} />;
+        } else if (firstAllowedTab === 'workers') {
+          return <WorkerManagement workers={workers} setWorkers={setWorkers} language={language} translations={translations} serviceTypes={serviceTypesData} />;
+        }
+        return null; // Should not happen if navigation is properly filtered
     }
   };
+
+  if (!session) {
+    return <Auth />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -713,6 +791,17 @@ function App() {
                 currentLanguage={language}
                 onLanguageChange={setLanguage}
               />
+              {session && (
+                <button
+                  onClick={async () => {
+                    const { error } = await supabase.auth.signOut();
+                    if (error) console.error("Error signing out:", error.message);
+                  }}
+                  className="ml-4 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  Sign Out
+                </button>
+              )}
             </div>
 
             {/* Desktop Navigation */}
@@ -788,3 +877,4 @@ function App() {
 }
 
 export default App;
+
