@@ -1,14 +1,14 @@
--- SCOE Construction Management System - Database Schema
+-- SCOE Construction Management System - Complete Database Schema
+-- Run this in Supabase SQL Editor
 
 -- ============================================
--- 1. PROFILES TABLE (Already exists, but included for reference)
+-- 1. PROFILES TABLE (Core - required first)
 -- ============================================
--- This table should already exist from earlier setup
--- CREATE TABLE IF NOT EXISTS profiles (
---   id UUID REFERENCES auth.users(id) PRIMARY KEY,
---   role TEXT NOT NULL CHECK (role IN ('worker', 'manager', 'admin')),
---   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
--- );
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  role TEXT NOT NULL CHECK (role IN ('worker', 'manager', 'admin')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
 -- ============================================
 -- 2. PROJECTS TABLE
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS projects (
 -- ============================================
 CREATE TABLE IF NOT EXISTS project_stages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
   status TEXT CHECK (status IN ('planned', 'in_progress', 'completed')) DEFAULT 'planned',
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS teams (
 );
 
 -- ============================================
--- 5. WORKERS/PROFESSIONALS TABLE (Enhanced)
+-- 5. WORKERS TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS workers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -93,11 +93,11 @@ CREATE TABLE IF NOT EXISTS suppliers (
 );
 
 -- ============================================
--- 7. TASKS/SCHEDULE TABLE
+-- 7. TASKS TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   stage_id UUID REFERENCES project_stages(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 
 -- ============================================
--- 8. JOBS TABLE (Enhanced - replaces localStorage jobs)
+-- 8. JOBS TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS jobs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS jobs (
 -- ============================================
 CREATE TABLE IF NOT EXISTS budgets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   stage_id UUID REFERENCES project_stages(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   planned_amount DECIMAL(15, 2) NOT NULL,
@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS budgets (
 -- ============================================
 CREATE TABLE IF NOT EXISTS expenses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   stage_id UUID REFERENCES project_stages(id) ON DELETE SET NULL,
   budget_id UUID REFERENCES budgets(id) ON DELETE SET NULL,
   supplier_id UUID REFERENCES suppliers(id) ON DELETE SET NULL,
@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS expenses (
 -- ============================================
 CREATE TABLE IF NOT EXISTS documents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   stage_id UUID REFERENCES project_stages(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
@@ -187,11 +187,11 @@ CREATE TABLE IF NOT EXISTS documents (
 );
 
 -- ============================================
--- 12. ISSUES/NON-CONFORMITIES TABLE
+-- 12. ISSUES TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS issues (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   stage_id UUID REFERENCES project_stages(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
@@ -207,7 +207,7 @@ CREATE TABLE IF NOT EXISTS issues (
 );
 
 -- ============================================
--- 13. EMPLOYEES TABLE (for HR management)
+-- 13. EMPLOYEES TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS employees (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -228,11 +228,11 @@ CREATE TABLE IF NOT EXISTS employees (
 );
 
 -- ============================================
--- 14. PTO/VACATION TABLE
+-- 14. PTO REQUESTS TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS pto_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
+  employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
   request_type TEXT CHECK (request_type IN ('vacation', 'sick_leave', 'personal', 'other')) DEFAULT 'vacation',
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
@@ -247,7 +247,7 @@ CREATE TABLE IF NOT EXISTS pto_requests (
 );
 
 -- ============================================
--- 15. ATTENDANCE/CLOCK-IN-OUT TABLE
+-- 15. ATTENDANCE TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS attendance (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -279,10 +279,10 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 
 -- ============================================
--- ROW LEVEL SECURITY (RLS) POLICIES
+-- ENABLE ROW LEVEL SECURITY (RLS)
 -- ============================================
 
--- Enable RLS on all tables
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_stages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
@@ -299,115 +299,108 @@ ALTER TABLE pto_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 
--- Projects: Managers can view all, workers can view projects they're assigned to
-CREATE POLICY "Managers can view all projects" ON projects FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin')
-    )
-  );
+-- ============================================
+-- RLS POLICIES
+-- ============================================
 
-CREATE POLICY "Workers can view their projects" ON projects FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM workers WHERE workers.user_id = auth.uid()
-    )
-  );
+-- Profiles: Users can read their own
+CREATE POLICY "Users can read own profile" ON profiles FOR SELECT
+  USING (auth.uid() = id);
 
-CREATE POLICY "Managers can insert projects" ON projects FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin')
-    )
-  );
+CREATE POLICY "Admins can read all profiles" ON profiles FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
+  ));
 
-CREATE POLICY "Managers can update projects" ON projects FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin')
-    )
-  );
+-- Projects: Managers see all, workers see assigned
+CREATE POLICY "Managers view all projects" ON projects FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin')
+  ));
 
--- Jobs: Workers can insert their own jobs, managers can view/update all
-CREATE POLICY "Workers can insert jobs" ON jobs FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('worker', 'manager', 'admin')
-    )
-  );
+CREATE POLICY "Workers view their projects" ON projects FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM workers WHERE workers.user_id = auth.uid()
+  ));
 
-CREATE POLICY "Users can view jobs" ON jobs FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles WHERE profiles.id = auth.uid()
-    )
-  );
+CREATE POLICY "Managers insert projects" ON projects FOR INSERT
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin')
+  ));
 
-CREATE POLICY "Managers can update jobs" ON jobs FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin')
-    )
-  );
+CREATE POLICY "Managers update projects" ON projects FOR UPDATE
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin')
+  ));
 
--- Workers: All authenticated users can view workers
-CREATE POLICY "Users can view workers" ON workers FOR SELECT
+-- Jobs: All authenticated users can view, workers/managers can insert
+CREATE POLICY "Users view jobs" ON jobs FOR SELECT
   USING (auth.uid() IS NOT NULL);
 
-CREATE POLICY "Managers can manage workers" ON workers FOR ALL
+CREATE POLICY "Workers insert jobs" ON jobs FOR INSERT
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('worker', 'manager', 'admin')
+  ));
+
+CREATE POLICY "Managers update jobs" ON jobs FOR UPDATE
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin')
+  ));
+
+-- Workers: All authenticated users can view
+CREATE POLICY "Users view workers" ON workers FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Managers manage workers" ON workers FOR INSERT
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin')
+  ));
+
+CREATE POLICY "Managers update workers" ON workers FOR UPDATE
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin')
+  ));
+
+-- Tasks: Managers see all, workers see assigned
+CREATE POLICY "Managers view tasks" ON tasks FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin')
+  ));
+
+CREATE POLICY "Workers view assigned tasks" ON tasks FOR SELECT
+  USING (assigned_to IN (
+    SELECT id FROM workers WHERE workers.user_id = auth.uid()
+  ));
+
+-- Attendance: Users can insert/view their own, managers can view all
+CREATE POLICY "Users insert own attendance" ON attendance FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Users view own attendance" ON attendance FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin')
-    )
+    employee_id IN (SELECT id FROM employees WHERE user_id = auth.uid()) OR
+    worker_id IN (SELECT id FROM workers WHERE user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin'))
   );
 
--- Attendance: Employees can view/insert their own, managers can view all
-CREATE POLICY "Employees can insert their attendance" ON attendance FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM employees WHERE employees.user_id = auth.uid() AND employees.id = employee_id
-    ) OR
-    EXISTS (
-      SELECT 1 FROM workers WHERE workers.user_id = auth.uid() AND workers.id = worker_id
-    )
+-- PTO: Employees manage own, managers can view all
+CREATE POLICY "Employees manage own PTO" ON pto_requests FOR ALL
+  USING (
+    employee_id IN (SELECT id FROM employees WHERE user_id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin'))
   );
 
-CREATE POLICY "Users can view their own attendance" ON attendance FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM employees WHERE employees.user_id = auth.uid() AND employees.id = employee_id
-    ) OR
-    EXISTS (
-      SELECT 1 FROM workers WHERE workers.user_id = auth.uid() AND workers.id = worker_id
-    ) OR
-    EXISTS (
-      SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin')
-    )
-  );
-
--- PTO Requests: Employees can manage their own, managers can view/approve all
-CREATE POLICY "Employees can manage their PTO" ON pto_requests FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM employees WHERE employees.user_id = auth.uid() AND employees.id = employee_id
-    ) OR
-    EXISTS (
-      SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('manager', 'admin')
-    )
-  );
-
--- Audit Log: Only admins can view
-CREATE POLICY "Admins can view audit log" ON audit_log FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
-    )
-  );
+-- Audit Log: Only admins
+CREATE POLICY "Admins view audit log" ON audit_log FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
+  ));
 
 -- ============================================
 -- INDEXES FOR PERFORMANCE
 -- ============================================
 
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON profiles(role);
 CREATE INDEX IF NOT EXISTS idx_projects_manager ON projects(manager_id);
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
 CREATE INDEX IF NOT EXISTS idx_project_stages_project ON project_stages(project_id);
@@ -423,13 +416,12 @@ CREATE INDEX IF NOT EXISTS idx_attendance_employee ON attendance(employee_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(work_date);
 CREATE INDEX IF NOT EXISTS idx_pto_employee ON pto_requests(employee_id);
 CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id);
-CREATE INDEX IF NOT EXISTS idx_audit_table ON audit_log(table_name);
 
 -- ============================================
--- FUNCTIONS AND TRIGGERS
+-- FUNCTIONS & TRIGGERS
 -- ============================================
 
--- Function to update updated_at timestamp
+-- Auto-update updated_at column
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -438,61 +430,45 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Apply updated_at trigger to all relevant tables
-CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Apply triggers
+CREATE TRIGGER update_projects_at BEFORE UPDATE ON projects FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_project_stages_at BEFORE UPDATE ON project_stages FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_teams_at BEFORE UPDATE ON teams FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_workers_at BEFORE UPDATE ON workers FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_suppliers_at BEFORE UPDATE ON suppliers FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_tasks_at BEFORE UPDATE ON tasks FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_jobs_at BEFORE UPDATE ON jobs FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_budgets_at BEFORE UPDATE ON budgets FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_expenses_at BEFORE UPDATE ON expenses FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_issues_at BEFORE UPDATE ON issues FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_employees_at BEFORE UPDATE ON employees FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_pto_requests_at BEFORE UPDATE ON pto_requests FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_project_stages_updated_at BEFORE UPDATE ON project_stages
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_teams_updated_at BEFORE UPDATE ON teams
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_workers_updated_at BEFORE UPDATE ON workers
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_suppliers_updated_at BEFORE UPDATE ON suppliers
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_jobs_updated_at BEFORE UPDATE ON jobs
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_budgets_updated_at BEFORE UPDATE ON budgets
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_expenses_updated_at BEFORE UPDATE ON expenses
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_issues_updated_at BEFORE UPDATE ON issues
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_employees_updated_at BEFORE UPDATE ON employees
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_pto_requests_updated_at BEFORE UPDATE ON pto_requests
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Function to automatically create profile on user signup
+-- Auto-create profile on user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.profiles (id, role)
-  VALUES (NEW.id, 'worker'); -- Default role is worker
+  VALUES (NEW.id, 'worker')
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Trigger to create profile on user signup
+-- Trigger for user signup
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- ============================================
--- INITIAL DATA (Optional)
--- ============================================
-
--- You can add some sample data here if needed
-
