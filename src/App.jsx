@@ -16,15 +16,20 @@ function App() {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-        try {
-          const { data: profile, error } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", session.user.id)
-            .single();
+supabase.auth.getSession().then(async ({ data: { session } }) => {
+  console.log('Session:', session);
+  setSession(session);
+  if (session) {
+    console.log('User ID:', session.user.id);
+    try {
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .single();
+      
+      console.log('Profile data:', profile);
+      console.log('Profile error:', error);
           
           if (error) {
             console.error("Error fetching user role:", error.message);
