@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { Camera, Send, MapPin, Calendar, DollarSign, User, Wrench, X } from 'lucide-react';
 
+
 const WorkerSubmission = ({ onSubmit, workers, language, translations, serviceTypes }) => {
+  console.log('Language:', language);
+  console.log('Translations keys:', Object.keys(translations[language] || {}));
+  console.log('Worker label:', translations[language]?.worker);
+
   const [formData, setFormData] = useState({
     workerId: '',
     serviceType: '',

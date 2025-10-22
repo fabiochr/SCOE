@@ -94,27 +94,95 @@ supabase.auth.getSession().then(async ({ data: { session } }) => {
     { key: 'generalContractor', en: 'General Contractor', pt: 'Empreiteiro Geral', fr: 'Entrepreneur Général', es: 'Contratista General', de: 'Generalunternehmer' }
   ];
 
-  // Language translations
-  const translations = {
-    en: {
-      appTitle: 'ConstructAI Manager',
-      workerSubmission: 'Worker Submission',
-      managementDashboard: 'Management Dashboard',
-      reports: 'Reports',
-      workerManagement: 'Worker Management',
-      loading: 'Loading...',
-      ...Object.fromEntries(serviceTypesData.map(s => [s.key, s.en]))
-    },
-    pt: {
-      appTitle: 'Gerenciador ConstructAI',
-      workerSubmission: 'Submissão de Trabalhadores',
-      managementDashboard: 'Painel de Gestão',
-      reports: 'Relatórios',
-      workerManagement: 'Gestão de Trabalhadores',
-      loading: 'Carregando...',
-      ...Object.fromEntries(serviceTypesData.map(s => [s.key, s.pt]))
-    }
-  };
+   // Language translations
+const translations = {
+  en: {
+    appTitle: 'ConstructAI Manager',
+    workerSubmission: 'Worker Submission',
+    managementDashboard: 'Management Dashboard',
+    reports: 'Reports',
+    workerManagement: 'Worker Management',
+    loading: 'Loading...',
+    // WorkerSubmission translations - ADD THESE:
+    worker: 'Worker',
+    selectWorker: 'Select Worker',
+    serviceType: 'Service Type',
+    selectServiceType: 'Select Service Type',
+    location: 'Location',
+    jobDate: 'Job Date',
+    description: 'Description',
+    amount: 'Amount',
+    paymentMethod: 'Payment Method',
+    cash: 'Cash',
+    bankTransfer: 'Bank Transfer',
+    check: 'Check',
+    creditCard: 'Credit Card',
+    otherPayment: 'Other',
+    specifyOtherPayment: 'Specify other payment method',
+    fillRequiredFields: 'Please fill in all required fields',
+    submissionSuccess: 'Job submission successful!',
+    workerSubmissionTitle: 'Worker Job Submission',
+    workerSubmissionDescription: 'Submit job completion details with AI-powered data extraction',
+    quickAISubmission: 'Quick Job Details Input',
+    aiSubmissionDescription: 'Enter job details below. AI will help parse and pre-fill the form.',
+    jobDescription: 'Job Description',
+    jobAddress: 'Job Address',
+    jobValue: 'Job Value',
+    additionalInfo: 'Additional Info',
+    parseAndFill: 'Parse & Fill Form',
+    processing: 'Processing...',
+    uploadImages: 'Upload Images',
+    submitJob: 'Submit Job',
+    remove: 'Remove',
+    clickToUpload: 'Click to upload',
+    orDragAndDrop: 'or drag and drop',
+    imageFormats: 'SVG, PNG, JPG or GIF (MAX. 800x400px)',
+    ...Object.fromEntries(serviceTypesData.map(s => [s.key, s.en]))
+  },
+  pt: {
+    appTitle: 'Gerenciador ConstructAI',
+    workerSubmission: 'Submissão de Trabalhadores',
+    managementDashboard: 'Painel de Gestão',
+    reports: 'Relatórios',
+    workerManagement: 'Gestão de Trabalhadores',
+    loading: 'Carregando...',
+    // WorkerSubmission translations - Portuguese:
+    worker: 'Trabalhador',
+    selectWorker: 'Selecionar Trabalhador',
+    serviceType: 'Tipo de Serviço',
+    selectServiceType: 'Selecionar Tipo de Serviço',
+    location: 'Localização',
+    jobDate: 'Data do Trabalho',
+    description: 'Descrição',
+    amount: 'Valor',
+    paymentMethod: 'Método de Pagamento',
+    cash: 'Dinheiro',
+    bankTransfer: 'Transferência Bancária',
+    check: 'Cheque',
+    creditCard: 'Cartão de Crédito',
+    otherPayment: 'Outro',
+    specifyOtherPayment: 'Especifique outro método de pagamento',
+    fillRequiredFields: 'Por favor, preencha todos os campos obrigatórios',
+    submissionSuccess: 'Envio de trabalho realizado com sucesso!',
+    workerSubmissionTitle: 'Envio de Trabalho do Trabalhador',
+    workerSubmissionDescription: 'Envie detalhes de conclusão de trabalho com extração de dados por IA',
+    quickAISubmission: 'Entrada Rápida de Detalhes do Trabalho',
+    aiSubmissionDescription: 'Insira os detalhes do trabalho abaixo. A IA ajudará a analisar e preencher o formulário.',
+    jobDescription: 'Descrição do Trabalho',
+    jobAddress: 'Endereço do Trabalho',
+    jobValue: 'Valor do Trabalho',
+    additionalInfo: 'Informações Adicionais',
+    parseAndFill: 'Analisar e Preencher Formulário',
+    processing: 'Processando...',
+    uploadImages: 'Carregar Imagens',
+    submitJob: 'Enviar Trabalho',
+    remove: 'Remover',
+    clickToUpload: 'Clique para carregar',
+    orDragAndDrop: 'ou arraste e solte',
+    imageFormats: 'SVG, PNG, JPG ou GIF (MÁX. 800x400px)',
+    ...Object.fromEntries(serviceTypesData.map(s => [s.key, s.pt]))
+  }
+};
 
   useEffect(() => {
     // Load data from localStorage
