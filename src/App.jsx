@@ -97,7 +97,7 @@ supabase.auth.getSession().then(async ({ data: { session } }) => {
    // Language translations
 const translations = {
   en: {
-    appTitle: 'ConstructAI Manager',
+    appTitle: 'Construction Business Management',
     workerSubmission: 'Worker Submission',
     managementDashboard: 'Management Dashboard',
     reports: 'Reports',
@@ -140,7 +140,7 @@ const translations = {
     ...Object.fromEntries(serviceTypesData.map(s => [s.key, s.en]))
   },
   pt: {
-    appTitle: 'Gerenciador ConstructAI',
+    appTitle: 'Gerenciamento de negocios da Construcao ',
     workerSubmission: 'Submissão de Trabalhadores',
     managementDashboard: 'Painel de Gestão',
     reports: 'Relatórios',
