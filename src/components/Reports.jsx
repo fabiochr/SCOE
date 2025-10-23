@@ -1,262 +1,355 @@
 import React, { useState } from 'react';
-import { BarChart3, TrendingUp, DollarSign, Users, Download, Calendar } from 'lucide-react';
+import { BarChart3, Download, Calendar, DollarSign, Users, TrendingUp } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 
 const Reports = ({ jobs, workers, language, translations }) => {
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [dateRange, setDateRange] = useState({
+    start: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+    end: format(endOfMonth(new Date()), 'yyyy-MM-dd')
+  });
   const [selectedWorker, setSelectedWorker] = useState('all');
+  const [selectedService, setSelectedService] = useState('all');
 
-  // Filter jobs by date range
+  const serviceTypes = [...new Set(jobs.map(job => job.serviceType).filter(Boolean))];
+
   const filteredJobs = jobs.filter(job => {
     const jobDate = new Date(job.date);
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
+    const startDate = new Date(dateRange.start);
+    const endDate = new Date(dateRange.end);
     
-    const afterStart = !start || jobDate >= start;
-    const beforeEnd = !end || jobDate <= end;
+    const withinDateRange = isWithinInterval(jobDate, { start: startDate, end: endDate });
     const matchesWorker = selectedWorker === 'all' || job.workerId === parseInt(selectedWorker);
+    const matchesService = selectedService === 'all' || job.serviceType === selectedService;
     
-    return afterStart && beforeEnd && matchesWorker;
+    return withinDateRange && matchesWorker && matchesService;
   });
 
-  // Calculate statistics
-  const totalRevenue = filteredJobs.reduce((sum, job) => sum + parseFloat(job.amount || 0), 0);
-  const paidJobs = filteredJobs.filter(job => job.paymentStatus === 'paid');
-  const paidAmount = paidJobs.reduce((sum, job) => sum + parseFloat(job.amount || 0), 0);
-  const pendingAmount = totalRevenue - paidAmount;
+  const totalRevenue = filteredJobs.reduce((sum, job) => sum + (job.amount || 0), 0);
+  const paidRevenue = filteredJobs
+    .filter(job => job.paymentStatus === 'paid')
+    .reduce((sum, job) => sum + (job.amount || 0), 0);
+  const pendingRevenue = totalRevenue - paidRevenue;
 
-  // Worker performance
+  // Worker performance data
   const workerStats = workers.map(worker => {
     const workerJobs = filteredJobs.filter(job => job.workerId === worker.id);
-    const revenue = workerJobs.reduce((sum, job) => sum + parseFloat(job.amount || 0), 0);
+    const totalAmount = workerJobs.reduce((sum, job) => sum + (job.amount || 0), 0);
+    const jobCount = workerJobs.length;
+    
     return {
       ...worker,
-      jobsCompleted: workerJobs.length,
-      revenue: revenue,
-      avgJobValue: workerJobs.length > 0 ? revenue / workerJobs.length : 0
+      jobCount,
+      totalAmount,
+      avgJobValue: jobCount > 0 ? totalAmount / jobCount : 0
     };
-  }).sort((a, b) => b.revenue - a.revenue);
+  }).filter(worker => worker.jobCount > 0);
 
   // Service type breakdown
-  const serviceStats = {};
-  filteredJobs.forEach(job => {
-    if (!serviceStats[job.serviceType]) {
-      serviceStats[job.serviceType] = { count: 0, revenue: 0 };
-    }
-    serviceStats[job.serviceType].count++;
-    serviceStats[job.serviceType].revenue += parseFloat(job.amount || 0);
-  });
+  const serviceStats = serviceTypes.map(service => {
+    const serviceJobs = filteredJobs.filter(job => job.serviceType === service);
+    const totalAmount = serviceJobs.reduce((sum, job) => sum + (job.amount || 0), 0);
+    
+    return {
+      service,
+      jobCount: serviceJobs.length,
+      totalAmount,
+      percentage: totalRevenue > 0 ? (totalAmount / totalRevenue) * 100 : 0
+    };
+  }).sort((a, b) => b.totalAmount - a.totalAmount);
+
+  // Monthly trend (last 6 months)
+  const monthlyData = [];
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date();
+    date.setMonth(date.getMonth() - i);
+    const monthStart = startOfMonth(date);
+    const monthEnd = endOfMonth(date);
+    
+    const monthJobs = jobs.filter(job => {
+      const jobDate = new Date(job.date);
+      return isWithinInterval(jobDate, { start: monthStart, end: monthEnd });
+    });
+    
+    const monthRevenue = monthJobs.reduce((sum, job) => sum + (job.amount || 0), 0);
+    
+    monthlyData.push({
+      month: format(date, 'MMM'),
+      revenue: monthRevenue,
+      jobCount: monthJobs.length
+    });
+  }
 
   const exportToCSV = () => {
-    const headers = ['Date', 'Worker', 'Service Type', 'Location', 'Amount', 'Status'];
-    const rows = filteredJobs.map(job => [
-      new Date(job.date).toLocaleDateString(),
+    const headers = [
+      translations[language].date,
+      translations[language].worker,
+      translations[language].service,
+      translations[language].location,
+      translations[language].amount,
+      translations[language].pending,
+      translations[language].paymentMethod
+    ];
+    const csvData = filteredJobs.map(job => [
+      job.date,
       job.workerName,
       job.serviceType,
       job.location,
-      job.amount,
-      job.paymentStatus
+      job.amount || 0,
+      translations[language][`status${job.paymentStatus.charAt(0).toUpperCase() + job.paymentStatus.slice(1)}`],
+      job.paymentMethod // Use raw payment method for CSV
     ]);
     
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
+    const csvContent = [headers, ...csvData]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `construction-report-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `construction-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
-  const StatCard = ({ title, value, subtitle, icon: Icon, gradient, textColor }) => (
-    <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-6 border border-gray-100">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <h3 className={`text-3xl font-bold mb-1 ${textColor}`}>{value}</h3>
-          <p className="text-sm text-gray-500">{subtitle}</p>
-        </div>
-        <div className={`p-3 rounded-lg ${gradient}`}>
-          <Icon className="w-6 h-6 text-white" />
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 shadow-lg">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Reports & Analytics</h1>
-          <p className="text-blue-100">Business insights and performance metrics</p>
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">{translations[language].reportsTitle}</h1>
+        <p className="text-gray-600">{translations[language].reportsDescription}</p>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white p-6 rounded-lg shadow-sm border mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{translations[language].startDate}</label>
+            <input
+              type="date"
+              value={dateRange.start}
+              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{translations[language].endDate}</label>
+            <input
+              type="date"
+              value={dateRange.end}
+              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{translations[language].worker}</label>
+            <select
+              value={selectedWorker}
+              onChange={(e) => setSelectedWorker(e.target.value)}
+              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">{translations[language].allWorkers}</option>
+              {workers.map(worker => (
+                <option key={worker.id} value={worker.id}>
+                  {worker.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{translations[language].service}</label>
+            <select
+              value={selectedService}
+              onChange={(e) => setSelectedService(e.target.value)}
+              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">{translations[language].allServices}</option>
+              {serviceTypes.map(service => (
+                <option key={service} value={service}>
+                  {service}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="flex items-end">
+            <button
+              onClick={exportToCSV}
+              className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center justify-center"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {translations[language].exportCSV}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="flex items-center justify-between">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Start Date
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-              </div>
+              <p className="text-sm text-gray-600 mb-1">{translations[language].totalJobs}</p>
+              <p className="text-3xl font-bold text-gray-900">{filteredJobs.length}</p>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                End Date
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Worker
-              </label>
-              <div className="relative">
-                <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <select
-                  value={selectedWorker}
-                  onChange={(e) => setSelectedWorker(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none bg-white"
-                >
-                  <option value="all">All Workers</option>
-                  {workers.map(worker => (
-                    <option key={worker.id} value={worker.id}>{worker.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={exportToCSV}
-                className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all flex items-center justify-center font-semibold shadow-md"
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Export CSV
-              </button>
-            </div>
+            <BarChart3 className="w-8 h-8 text-blue-600" />
           </div>
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <StatCard
-            title="Total Revenue"
-            value={`$${totalRevenue.toFixed(2)}`}
-            subtitle={`${filteredJobs.length} jobs`}
-            icon={DollarSign}
-            gradient="bg-gradient-to-br from-blue-500 to-blue-600"
-            textColor="text-gray-900"
-          />
-          <StatCard
-            title="Paid Amount"
-            value={`$${paidAmount.toFixed(2)}`}
-            subtitle={`${paidJobs.length} paid jobs`}
-            icon={TrendingUp}
-            gradient="bg-gradient-to-br from-green-500 to-emerald-600"
-            textColor="text-green-600"
-          />
-          <StatCard
-            title="Pending Amount"
-            value={`$${pendingAmount.toFixed(2)}`}
-            subtitle={`${filteredJobs.length - paidJobs.length} pending`}
-            icon={BarChart3}
-            gradient="bg-gradient-to-br from-orange-500 to-amber-600"
-            textColor="text-orange-600"
-          />
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 mb-1">{translations[language].totalRevenue}</p>
+              <p className="text-3xl font-bold text-gray-900">${totalRevenue.toFixed(2)}</p>
+            </div>
+            <DollarSign className="w-8 h-8 text-green-600" />
+          </div>
         </div>
 
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 mb-1">{translations[language].paidAmount}</p>
+              <p className="text-3xl font-bold text-green-600">${paidRevenue.toFixed(2)}</p>
+            </div>
+            <TrendingUp className="w-8 h-8 text-green-600" />
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 mb-1">{translations[language].pendingAmount}</p>
+              <p className="text-3xl font-bold text-yellow-600">${pendingRevenue.toFixed(2)}</p>
+            </div>
+            <Calendar className="w-8 h-8 text-yellow-600" />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Worker Performance */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
-          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 px-6 py-4 border-b border-blue-100">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center">
-              <Users className="w-5 h-5 mr-2 text-blue-600" />
-              Worker Performance
-            </h3>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {workerStats.slice(0, 5).map((worker, index) => (
-                <div key={worker.id} className="flex items-center">
-                  <div className="flex items-center flex-1">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold mr-4">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{worker.name}</p>
-                      <p className="text-sm text-gray-500">{worker.specialty}</p>
-                    </div>
-                  </div>
-                  <div className="text-right mr-8">
-                    <p className="text-sm text-gray-600">{worker.jobsCompleted} jobs</p>
-                    <p className="text-xs text-gray-500">avg ${worker.avgJobValue.toFixed(2)}</p>
-                  </div>
-                  <div className="text-right min-w-[120px]">
-                    <p className="text-lg font-bold text-green-600">${worker.revenue.toFixed(2)}</p>
-                  </div>
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <h3 className="text-lg font-semibold mb-4 flex items-center">
+            <Users className="w-5 h-5 mr-2" />
+            {translations[language].workerPerformance}
+          </h3>
+          <div className="space-y-4">
+            {workerStats.map((worker, index) => (
+              <div key={worker.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900">{worker.name}</p>
+                  <p className="text-sm text-gray-600">{worker.jobCount} {translations[language].jobsCompleted}</p>
                 </div>
-              ))}
-            </div>
+                <div className="text-right">
+                  <p className="font-medium text-gray-900">Total: ${worker.totalAmount.toFixed(2)}</p>
+                  <p className="text-sm text-gray-600">${worker.avgJobValue.toFixed(2)} {translations[language].avg}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Service Type Breakdown */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 px-6 py-4 border-b border-blue-100">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center">
-              <BarChart3 className="w-5 h-5 mr-2 text-blue-600" />
-              Service Type Breakdown
-            </h3>
+        {/* Service Breakdown */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <h3 className="text-lg font-semibold mb-4">{translations[language].serviceTypeBreakdown}</h3>
+          <div className="space-y-4">
+            {serviceStats.map((stat, index) => (
+              <div key={stat.service} className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium text-gray-900">{stat.service}</span>
+                  <span className="text-sm text-gray-600">${stat.totalAmount.toFixed(2)}</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full"
+                    style={{ width: `${stat.percentage}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>{stat.jobCount} {translations[language].jobs}</span>
+                  <span>{stat.percentage.toFixed(1)}%</span>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.entries(serviceStats).map(([service, stats]) => (
-                <div key={service} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-semibold text-gray-900">{service}</h4>
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded">
-                      {stats.count} jobs
+        </div>
+
+        {/* Monthly Trend */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border lg:col-span-2">
+          <h3 className="text-lg font-semibold mb-4">{translations[language].monthRevenueTrend}</h3>
+          <div className="space-y-4">
+            <div className="flex items-end space-x-4 h-40">
+              {monthlyData.map((month, index) => {
+                const maxRevenue = Math.max(...monthlyData.map(m => m.revenue));
+                const height = maxRevenue > 0 ? (month.revenue / maxRevenue) * 100 : 0;
+                
+                return (
+                  <div key={index} className="flex-1 flex flex-col items-center">
+                    <div className="w-full bg-blue-600 rounded-t" style={{ height: `${height}%` }} />
+                    <div className="mt-2 text-center">
+                      <p className="text-xs font-medium text-gray-900">{month.month}</p>
+                      <p className="text-xs text-gray-600">${month.revenue.toFixed(0)}</p>
+                      <p className="text-xs text-gray-500">{month.jobCount} {translations[language].jobs}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Jobs Table */}
+      <div className="bg-white rounded-lg shadow-sm border mt-8">
+        <div className="p-6 border-b">
+          <h3 className="text-lg font-semibold">{translations[language].recentJobs} ({filteredJobs.length})</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{translations[language].date}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{translations[language].worker}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{translations[language].service}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{translations[language].location}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{translations[language].amount}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{translations[language].pending}</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredJobs.slice(0, 10).map((job) => (
+                <tr key={job.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {job.date && format(new Date(job.date), 'MMM d, yyyy')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {job.workerName}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {job.serviceType}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {job.location}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ${(job.amount || 0).toFixed(2)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                      job.paymentStatus === 'paid' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {translations[language][`status${job.paymentStatus.charAt(0).toUpperCase() + job.paymentStatus.slice(1)}`]}
                     </span>
-                  </div>
-                  <p className="text-2xl font-bold text-green-600">${stats.revenue.toFixed(2)}</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Avg: ${(stats.revenue / stats.count).toFixed(2)} per job
-                  </p>
-                  <div className="mt-3 bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all"
-                      style={{ width: `${(stats.revenue / totalRevenue) * 100}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {((stats.revenue / totalRevenue) * 100).toFixed(1)}% of total revenue
-                  </p>
-                </div>
+                  </td>
+                </tr>
               ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Summary Footer */}
-        <div className="mt-8 text-center text-sm text-gray-600">
-          Showing data for {filteredJobs.length} jobs
-          {startDate && endDate && ` from ${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
