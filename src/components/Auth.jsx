@@ -16,30 +16,27 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
+        const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
         setMessage({
           type: 'success',
-          text: 'Check your email for the confirmation link!'
+          text: 'Check your email for the confirmation link!',
         });
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
         setMessage({
           type: 'success',
-          text: 'Successfully signed in!'
+          text: 'Successfully signed in!',
         });
       }
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error.message
+        text: error.message,
       });
     } finally {
       setLoading(false);
@@ -47,16 +44,16 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-500 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-500 flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:32px_32px]" />
-      
+
       <div className="relative w-full max-w-md">
-        {/* Logo/Brand Section */}
+        {/* Logo / Brand */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-xl mb-4">
             <Building2 className="w-8 h-8 text-blue-600" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-bold text-white mb-1">
             Construction Business Management
           </h1>
           <p className="text-blue-100">
@@ -66,7 +63,7 @@ const Auth = () => {
 
         {/* Auth Card */}
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          {/* Gradient Header */}
+          {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-cyan-500 px-8 py-6">
             <h2 className="text-2xl font-bold text-white">
               {isSignUp ? 'Create Account' : 'Welcome Back'}
@@ -78,27 +75,33 @@ const Auth = () => {
 
           {/* Form */}
           <form onSubmit={handleAuth} className="p-8 space-y-6">
-            {/* Message Alert */}
+            {/* Message */}
             {message.text && (
-              <div className={`p-4 rounded-lg flex items-start space-x-3 ${
-                message.type === 'error' 
-                  ? 'bg-red-50 border border-red-200' 
-                  : 'bg-green-50 border border-green-200'
-              }`}>
+              <div
+                className={`p-4 rounded-lg flex items-start space-x-3 ${
+                  message.type === 'error'
+                    ? 'bg-red-50 border border-red-200'
+                    : 'bg-green-50 border border-green-200'
+                }`}
+              >
                 {message.type === 'error' ? (
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                 ) : (
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                 )}
-                <p className={`text-sm font-medium ${
-                  message.type === 'error' ? 'text-red-800' : 'text-green-800'
-                }`}>
+                <p
+                  className={`text-sm font-medium ${
+                    message.type === 'error'
+                      ? 'text-red-800'
+                      : 'text-green-800'
+                  }`}
+                >
                   {message.text}
                 </p>
               </div>
             )}
 
-            {/* Email Field */}
+            {/* Email */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Email Address
@@ -116,7 +119,7 @@ const Auth = () => {
               </div>
             </div>
 
-            {/* Password Field */}
+            {/* Password */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Password
@@ -134,7 +137,7 @@ const Auth = () => {
               </div>
             </div>
 
-            {/* Submit Button */}
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -142,8 +145,51 @@ const Auth = () => {
             >
               {loading ? (
                 <>
-                  <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin h-5 w-5 mr-2 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4zm2 5.29A7.96 7.96 0 014 12H0c0 3.04 1.13 5.82 3 7.94l3-2.65z"
+                    ></path>
                   </svg>
                   Loading...
+                </>
+              ) : isSignUp ? (
+                'Sign Up'
+              ) : (
+                'Sign In'
+              )}
+            </button>
+
+            {/* Toggle Auth Mode */}
+            <p className="text-center text-sm text-gray-600">
+              {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-blue-600 hover:underline font-semibold"
+              >
+                {isSignUp ? 'Sign In' : 'Sign Up'}
+              </button>
+            </p>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Auth;
