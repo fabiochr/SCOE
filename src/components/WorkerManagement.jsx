@@ -1,258 +1,246 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Phone, User, Wrench, X } from 'lucide-react';
 
 const WorkerManagement = ({ workers, setWorkers, language, translations, serviceTypes }) => {
-  const [isAddingWorker, setIsAddingWorker] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [editingWorker, setEditingWorker] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    email: '',
     specialty: '',
     active: true
   });
 
-  // Get translated service types
-  const specialties = serviceTypes ? serviceTypes.map(s => s[language]) : [
-    'Painting', 'Plumbing', 'Electrical', 'Carpentry', 
-    'Roofing', 'Flooring', 'HVAC', 'General Contractor',
-    'Masonry', 'Landscaping', 'Drywall', 'Insulation'
+  const translatedServiceTypes = serviceTypes ? serviceTypes.map(s => s[language]) : [
+    'Painting', 'Plumbing', 'Electrical', 'Carpentry', 'Roofing', 'Flooring', 'HVAC', 'General Contractor'
   ];
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      phone: '',
-      specialty: '',
-      active: true
-    });
-    setIsAddingWorker(false);
+  const handleOpenModal = (worker = null) => {
+    if (worker) {
+      setEditingWorker(worker);
+      setFormData({
+        name: worker.name,
+        phone: worker.phone || '',
+        email: worker.email || '',
+        specialty: worker.specialty,
+        active: worker.active
+      });
+    } else {
+      setEditingWorker(null);
+      setFormData({ name: '', phone: '', email: '', specialty: '', active: true });
+    }
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
     setEditingWorker(null);
   };
 
-  const handleAddWorker = () => {
-    if (!formData.name || !formData.specialty) {
-      alert(translations[language].fillNameSpecialty);
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formData.specialty) {
+      alert('Please fill in name and specialty');
       return;
     }
 
-    const newWorker = {
-      id: Date.now(),
-      ...formData
-    };
-
-    setWorkers(prev => [...prev, newWorker]);
-    resetForm();
-  };
-
-  const handleEditWorker = (worker) => {
-    setFormData(worker);
-    setEditingWorker(worker.id);
-    setIsAddingWorker(true);
-  };
-
-  const handleUpdateWorker = () => {
-    if (!formData.name || !formData.specialty) {
-      alert(translations[language].fillNameSpecialty);
-      return;
+    if (editingWorker) {
+      setWorkers(workers.map(w => w.id === editingWorker.id ? { ...w, ...formData } : w));
+    } else {
+      setWorkers([...workers, { id: Date.now(), ...formData }]);
     }
-
-    setWorkers(prev => prev.map(worker => 
-      worker.id === editingWorker ? { ...formData, id: editingWorker } : worker
-    ));
-    resetForm();
+    handleCloseModal();
   };
 
-  const handleDeleteWorker = (workerId) => {
-    if (window.confirm(translations[language].confirmDeleteWorker)) {
-      setWorkers(prev => prev.filter(worker => worker.id !== workerId));
+  const handleDelete = (workerId) => {
+    if (window.confirm('Are you sure you want to delete this worker?')) {
+      setWorkers(workers.filter(w => w.id !== workerId));
     }
   };
 
-  const toggleWorkerStatus = (workerId) => {
-    setWorkers(prev => prev.map(worker => 
-      worker.id === workerId ? { ...worker, active: !worker.active } : worker
-    ));
+  const toggleActive = (workerId) => {
+    setWorkers(workers.map(w => w.id === workerId ? { ...w, active: !w.active } : w));
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="mb-8">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{translations[language].workerManagementTitle}</h1>
-            <p className="text-gray-600">{translations[language].workerManagementDescription}</p>
-          </div>
-          <button
-            onClick={() => setIsAddingWorker(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            {translations[language].addWorker}
-          </button>
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-blue-600 text-white px-6 py-4 shadow flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Worker Management</h1>
+          <p className="text-blue-100 text-sm">Manage your construction team</p>
         </div>
+        <button
+          onClick={() => handleOpenModal()}
+          className="px-4 py-2 bg-white text-blue-600 rounded hover:bg-blue-50 font-semibold"
+        >
+          + Add Worker
+        </button>
       </div>
 
-      {/* Workers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        {workers.map((worker) => (
-          <div key={worker.id} className={`bg-white rounded-lg shadow-sm border p-6 ${!worker.active ? 'opacity-60' : ''}`}>
-            <div className="flex justify-between items-start mb-4">
+      <div className="max-w-7xl mx-auto p-6">
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="bg-white p-4 rounded shadow-sm border border-gray-200">
+            <p className="text-sm text-gray-600">Total Workers</p>
+            <p className="text-2xl font-bold">{workers.length}</p>
+          </div>
+          <div className="bg-white p-4 rounded shadow-sm border border-gray-200">
+            <p className="text-sm text-gray-600">Active</p>
+            <p className="text-2xl font-bold text-green-600">{workers.filter(w => w.active).length}</p>
+          </div>
+          <div className="bg-white p-4 rounded shadow-sm border border-gray-200">
+            <p className="text-sm text-gray-600">Inactive</p>
+            <p className="text-2xl font-bold text-gray-600">{workers.filter(w => !w.active).length}</p>
+          </div>
+        </div>
+
+        {workers.length === 0 ? (
+          <div className="bg-white p-12 text-center rounded shadow-sm border border-gray-200">
+            <p className="text-gray-600 mb-4">No workers yet</p>
+            <button
+              onClick={() => handleOpenModal()}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Add Your First Worker
+            </button>
+          </div>
+        ) : (
+          <div className="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Contact</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Specialty</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {workers.map((worker) => (
+                  <tr key={worker.id} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium">{worker.name}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {worker.phone && <div>{worker.phone}</div>}
+                      {worker.email && <div className="text-gray-500 text-xs">{worker.email}</div>}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                        {worker.specialty}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        worker.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {worker.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right">
+                      <button
+                        onClick={() => handleOpenModal(worker)}
+                        className="text-blue-600 hover:text-blue-800 mr-3 text-xs"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => toggleActive(worker.id)}
+                        className="text-orange-600 hover:text-orange-800 mr-3 text-xs"
+                      >
+                        {worker.active ? 'Deactivate' : 'Activate'}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(worker.id)}
+                        className="text-red-600 hover:text-red-800 text-xs"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded max-w-md w-full">
+            <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold">{editingWorker ? 'Edit Worker' : 'Add Worker'}</h3>
+              <button onClick={handleCloseModal} className="text-white text-2xl">×</button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Name *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Phone</label>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Specialty *</label>
+                <select
+                  value={formData.specialty}
+                  onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                  required
+                >
+                  <option value="">Select Specialty</option>
+                  {translatedServiceTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
               <div className="flex items-center">
-                <div className="bg-blue-100 p-2 rounded-lg mr-3">
-                  <User className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{worker.name}</h3>
-                  <p className="text-sm text-gray-600 flex items-center">
-                    <Wrench className="w-4 h-4 mr-1" />
-                    {worker.specialty}
-                  </p>
-                </div>
+                <input
+                  type="checkbox"
+                  id="active"
+                  checked={formData.active}
+                  onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                  className="mr-2"
+                />
+                <label htmlFor="active" className="text-sm text-gray-700">Active worker</label>
               </div>
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                worker.active 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
-              }`}>
-                {worker.active ? translations[language].active : translations[language].inactive}
-              </span>
-            </div>
-
-            {worker.phone && (
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 flex items-center">
-                  <Phone className="w-4 h-4 mr-2" />
-                  {worker.phone}
-                </p>
-              </div>
-            )}
-
-            <div className="flex space-x-2">
-              <button
-                onClick={() => handleEditWorker(worker)}
-                className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors flex items-center justify-center"
-              >
-                <Edit className="w-4 h-4 mr-1" />
-                {translations[language].edit}
-              </button>
-              <button
-                onClick={() => toggleWorkerStatus(worker.id)}
-                className={`flex-1 px-3 py-2 text-sm rounded transition-colors ${
-                  worker.active
-                    ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                    : 'bg-green-100 text-green-700 hover:bg-green-200'
-                }`}
-              >
-                {worker.active ? translations[language].deactivate : translations[language].activate}
-              </button>
-              <button
-                onClick={() => handleDeleteWorker(worker.id)}
-                className="px-3 py-2 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Add/Edit Worker Modal */}
-      {isAddingWorker && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full">
-            <div className="p-6">
-              <h2 className="text-xl font-bold mb-4">
-                {editingWorker ? translations[language].editWorker : translations[language].addNewWorker}
-              </h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {translations[language].fullName} *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="John Smith"
-                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {translations[language].phoneNumber}
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="+1-555-0123"
-                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {translations[language].specialty} *
-                  </label>
-                  <select
-                    value={formData.specialty}
-                    onChange={(e) => setFormData(prev => ({ ...prev, specialty: e.target.value }))}
-                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">{translations[language].selectSpecialty}</option>
-                    {specialties.map(specialty => (
-                      <option key={specialty} value={specialty}>{specialty}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="active"
-                    checked={formData.active}
-                    onChange={(e) => setFormData(prev => ({ ...prev, active: e.target.checked }))}
-                    className="mr-2"
-                  />
-                  <label htmlFor="active" className="text-sm text-gray-700">
-                    {translations[language].activeWorkerDescription}
-                  </label>
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end space-x-3">
+              <div className="flex justify-end space-x-2 pt-4">
                 <button
-                  onClick={resetForm}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
                 >
-                  {translations[language].cancel}
+                  Cancel
                 </button>
                 <button
-                  onClick={editingWorker ? handleUpdateWorker : handleAddWorker}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
-                  {editingWorker ? translations[language].updateWorker : translations[language].addWorker}
+                  {editingWorker ? 'Update' : 'Add'} Worker
                 </button>
               </div>
-            </div>
+            </form>
           </div>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {workers.length === 0 && (
-        <div className="text-center py-12">
-          <User className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">{translations[language].noWorkersYet}</h3>
-          <p className="text-gray-600 mb-4">{translations[language].getStartedAddWorker}</p>
-          <button
-            onClick={() => setIsAddingWorker(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            {translations[language].addYourFirstWorker}
-          </button>
         </div>
       )}
     </div>

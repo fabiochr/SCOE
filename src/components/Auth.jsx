@@ -5,90 +5,104 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
 
-  const handleLogin = async (event) => {
-    event.preventDefault();
+  const handleAuth = async (e) => {
+    e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setMessage({ type: '', text: '' });
 
-    if (error) alert(error.message);
-    setLoading(false);
-  };
-
-  const handleSignUp = async (event) => {
-    event.preventDefault();
-    setLoading(true);
-    const { error } = await supabase.auth.signUp({ email, password });
-
-    if (error) alert(error.message);
-    else alert('Check your email for the confirmation link!');
-    setLoading(false);
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        setMessage({ type: 'success', text: 'Check your email for confirmation!' });
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        setMessage({ type: 'success', text: 'Successfully signed in!' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
+    <div className="min-h-screen bg-blue-600 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">Construction Business Management</h1>
+          <p className="text-blue-100">Manage your construction projects</p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="email-address" className="sr-only">Email address</label>
-              <input
-                id="email-address"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">Password</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+
+        <div className="bg-white rounded shadow-lg overflow-hidden">
+          <div className="bg-blue-700 px-6 py-4">
+            <h2 className="text-xl font-bold text-white">
+              {isSignUp ? 'Create Account' : 'Welcome Back'}
+            </h2>
           </div>
 
-          <div>
+          <form onSubmit={handleAuth} className="p-6 space-y-4">
+            {message.text && (
+              <div className={`p-3 rounded text-sm ${
+                message.type === 'error' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+              }`}>
+                {message.text}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-3 py-2 border border-gray-300 rounded"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3 py-2 border border-gray-300 rounded"
+                required
+              />
+            </div>
+
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               disabled={loading}
+              className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 font-semibold"
             >
-              {loading ? 'Loading...' : 'Sign in'}
+              {loading ? 'Loading...' : (isSignUp ? 'Create Account' : 'Sign In')}
             </button>
-          </div>
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={handleSignUp}
-              className="mt-2 text-sm text-blue-600 hover:text-blue-500"
-              disabled={loading}
-            >
-              Don't have an account? Sign up
-            </button>
-          </div>
-        </form>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setMessage({ type: '', text: '' });
+                }}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
 };
 
 export default Auth;
-
