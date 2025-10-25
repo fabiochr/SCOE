@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 const Dashboard = ({ jobs, workers, onUpdateJob, onDeleteJob, language, translations }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedJob, setSelectedJob] = useState(null);
 
   const totalJobs = jobs.length;
   const totalValue = jobs.reduce((sum, job) => sum + parseFloat(job.amount || 0), 0);

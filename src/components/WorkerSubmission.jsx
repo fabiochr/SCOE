@@ -108,7 +108,7 @@ const WorkerSubmission = ({ onSubmit, workers, language, translations, serviceTy
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Location *</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Location of work or service performed *</label>
             <input
               type="text"
               value={formData.location}
