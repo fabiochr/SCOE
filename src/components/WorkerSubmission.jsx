@@ -9,8 +9,11 @@ const WorkerSubmission = ({ onSubmit, workers, language, translations, serviceTy
     description: '',
     amount: '',
     paymentMethod: 'cash',
+    otherPaymentMethod: '',
     images: []
   });
+
+  const [showOtherPayment, setShowOtherPayment] = useState(false);
 
   const translatedServiceTypes = serviceTypes ? serviceTypes.map(s => s[language]) : [
     'Painting', 'Plumbing', 'Electrical', 'Carpentry', 'Roofing', 'Flooring', 'HVAC', 'General Contractor'
@@ -44,12 +47,18 @@ const WorkerSubmission = ({ onSubmit, workers, language, translations, serviceTy
       return;
     }
 
+    if (formData.paymentMethod === 'other' && !formData.otherPaymentMethod.trim()) {
+      alert('Please specify the payment method');
+      return;
+    }
+
     const worker = workers.find(w => w.id === parseInt(formData.workerId));
     const jobData = {
       ...formData,
       workerName: worker?.name || 'Unknown Worker',
       workerId: parseInt(formData.workerId),
       amount: parseFloat(formData.amount) || 0,
+      paymentMethod: formData.paymentMethod === 'other' ? formData.otherPaymentMethod : formData.paymentMethod,
     };
 
     onSubmit(jobData);
@@ -61,8 +70,10 @@ const WorkerSubmission = ({ onSubmit, workers, language, translations, serviceTy
       description: '',
       amount: '',
       paymentMethod: 'cash',
+      otherPaymentMethod: '',
       images: []
     });
+    setShowOtherPayment(false);
     alert(translations[language]?.submissionSuccess || 'Job submission successful!');
   };
 
@@ -158,16 +169,29 @@ const WorkerSubmission = ({ onSubmit, workers, language, translations, serviceTy
             <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Method</label>
             <select
               value={formData.paymentMethod}
-              onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, paymentMethod: e.target.value });
+                setShowOtherPayment(e.target.value === 'other');
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded"
             >
               <option value="cash">Cash</option>
               <option value="bank_transfer">Bank Transfer</option>
               <option value="check">Check</option>
               <option value="credit_card">Credit Card</option>
+              <option value="other">Other</option>
             </select>
+			{formData.paymentMethod === 'other' && (
+			  <input
+				type="text"
+				placeholder="Specify payment method"
+				value={formData.otherPaymentMethod || ''}
+				onChange={(e) => setFormData({ ...formData, otherPaymentMethod: e.target.value })}
+				className="w-full px-3 py-2 border border-gray-300 rounded mt-2"
+				required
+			  />
+			)}	
           </div>
-
           <div className="mb-4">
             <label className="block text-sm font-semibold text-gray-700 mb-2">Upload Images</label>
             <input

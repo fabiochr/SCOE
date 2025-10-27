@@ -21,7 +21,7 @@ const Dashboard = ({ jobs, workers, onUpdateJob, onDeleteJob, language, translat
     <div className="min-h-screen bg-gray-50">
       {/* Simple Blue Header */}
       <div className="bg-blue-600 text-white px-6 py-4 shadow">
-        <h1 className="text-2xl font-bold">Management Dashboard</h1>
+        <h1 className="text-2xl font-bold">{translations[language]?.managementDashboard || 'Management Dashboard'}</h1>
         <p className="text-blue-100 text-sm">Monitor and manage job submissions</p>
       </div>
 
@@ -29,19 +29,19 @@ const Dashboard = ({ jobs, workers, onUpdateJob, onDeleteJob, language, translat
         {/* Simple Stats Cards */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-4 rounded shadow-sm border border-gray-200">
-            <p className="text-sm text-gray-600">Total Jobs</p>
+            <p className="text-sm text-gray-600">{translations[language]?.totalJobs || 'Total Jobs'}</p>
             <p className="text-2xl font-bold">{totalJobs}</p>
           </div>
           <div className="bg-white p-4 rounded shadow-sm border border-gray-200">
-            <p className="text-sm text-gray-600">Total Value</p>
+            <p className="text-sm text-gray-600">{translations[language]?.totalValue || 'Total Value'}</p>
             <p className="text-2xl font-bold text-blue-600">${totalValue.toFixed(2)}</p>
           </div>
           <div className="bg-white p-4 rounded shadow-sm border border-gray-200">
-            <p className="text-sm text-gray-600">Paid</p>
+            <p className="text-sm text-gray-600">{translations[language]?.paid || 'Paid'}</p>
             <p className="text-2xl font-bold text-green-600">${paidJobs.reduce((sum, job) => sum + parseFloat(job.amount || 0), 0).toFixed(2)}</p>
           </div>
           <div className="bg-white p-4 rounded shadow-sm border border-gray-200">
-            <p className="text-sm text-gray-600">Pending</p>
+            <p className="text-sm text-gray-600">{translations[language]?.pending || 'Pending'}</p>
             <p className="text-2xl font-bold text-orange-600">${(totalValue - paidJobs.reduce((sum, job) => sum + parseFloat(job.amount || 0), 0)).toFixed(2)}</p>
           </div>
         </div>
@@ -51,7 +51,7 @@ const Dashboard = ({ jobs, workers, onUpdateJob, onDeleteJob, language, translat
           <div className="grid grid-cols-2 gap-4">
             <input
               type="text"
-              placeholder="Search jobs..."
+              placeholder={translations[language]?.searchJobs || "Search jobs..."}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded"
@@ -61,9 +61,9 @@ const Dashboard = ({ jobs, workers, onUpdateJob, onDeleteJob, language, translat
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded"
             >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="paid">Paid</option>
+              <option value="all">{translations[language]?.allStatus || 'All Status'}</option>
+              <option value="pending">{translations[language]?.pending || 'Pending'}</option>
+              <option value="paid">{translations[language]?.paid || 'Paid'}</option>
             </select>
           </div>
         </div>
@@ -73,14 +73,14 @@ const Dashboard = ({ jobs, workers, onUpdateJob, onDeleteJob, language, translat
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Worker</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Service</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Location</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Status</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700">Actions</th>
-              </tr>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700">{translations[language]?.actions || 'Actions'}</th>
+				<th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">{translations[language]?.date || 'Date'}</th>
+				<th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">{translations[language]?.worker || 'Worker'}</th>
+				<th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">{translations[language]?.service || 'Service'}</th>
+				<th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">{translations[language]?.location || 'Location'}</th>
+				<th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">{translations[language]?.amount || 'Amount'}</th>
+				<th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">{translations[language]?.status || 'Status'}</th>				
+			</tr>
             </thead>
             <tbody>
               {filteredJobs.map((job) => (
@@ -107,6 +107,12 @@ const Dashboard = ({ jobs, workers, onUpdateJob, onDeleteJob, language, translat
                       </button>
                     )}
                     <button
+                      onClick={() => setSelectedJob(job)}
+                      className="text-green-600 hover:text-green-800 text-xs mr-2"
+                    >
+                      View Details
+                    </button>
+                    <button
                       onClick={() => onDeleteJob(job.id)}
                       className="text-red-600 hover:text-red-800 text-xs"
                     >
@@ -119,6 +125,93 @@ const Dashboard = ({ jobs, workers, onUpdateJob, onDeleteJob, language, translat
           </table>
         </div>
       </div>
+
+      {/* Job Details Modal */}
+{selectedJob && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
+        <h3 className="text-xl font-bold">
+          {translations[language]?.jobDetails || 'Job Details'}
+        </h3>
+        <button
+          onClick={() => setSelectedJob(null)}
+          className="text-white hover:bg-blue-700 rounded p-1"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="p-6 space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm font-semibold text-gray-600">
+              {translations[language]?.workerLabel || 'Worker'}
+            </p>
+            <p className="text-base text-gray-900">{selectedJob.workerName}</p>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-600">
+              {translations[language]?.serviceType || 'Service Type'}
+            </p>
+            <p className="text-base text-gray-900">{selectedJob.serviceType}</p>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-600">
+              {translations[language]?.dateLabel || 'Date'}
+            </p>
+            <p className="text-base text-gray-900">{new Date(selectedJob.date).toLocaleDateString()}</p>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-600">
+              {translations[language]?.amountLabel || 'Amount'}
+            </p>
+            <p className="text-base font-bold text-green-600">${parseFloat(selectedJob.amount || 0).toFixed(2)}</p>
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-600 mb-1">
+            {translations[language]?.locationLabel || 'Location'}
+          </p>
+          <p className="text-base text-gray-900">{selectedJob.location}</p>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-600 mb-1">
+            {translations[language]?.descriptionLabel || 'Description'}
+          </p>
+          <p className="text-base text-gray-700">{selectedJob.description || translations[language]?.noDescription}</p>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-600 mb-1">
+            {translations[language]?.paymentMethodLabel || 'Payment Method'}
+          </p>
+          <p className="text-base text-gray-900">{selectedJob.paymentMethod || translations[language]?.notSpecified}</p>
+        </div>
+        {selectedJob.images && selectedJob.images.length > 0 && (
+          <div>
+            <p className="text-sm font-semibold text-gray-600 mb-2">
+              {translations[language]?.photosLabel || 'Photos'}
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {selectedJob.images.map((img, idx) => (
+                <img
+                  key={idx}
+                  src={img.url}
+                  alt={`Job photo ${idx + 1}`}
+                  className="w-full h-24 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-75"
+                  onClick={() => window.open(img.url, '_blank')}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 };
