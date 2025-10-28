@@ -234,58 +234,90 @@ const addJob = async (jobData) => {
     }
   };
 
-  useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-        try {
-          const { data: profile, error } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", session.user.id)
-            .single();
-          
-          if (error) {
-            console.error("Error fetching user role:", error.message);
-            setError("Failed to load user profile.");
-          } else {
-            setUserRole(profile.role);
-          }
-        } catch (err) {
-          console.error("Unexpected error:", err);
-          setError("An unexpected error occurred.");
-        }
-      }
-      setLoading(false);
-    });
+// FIND THIS SECTION in your App.jsx (around line 240-280)
+// REPLACE the entire useEffect with auth state management
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      if (session) {
-        try {
-          const { data: profile, error } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", session.user.id)
-            .single();
-          
-          if (error) {
-            console.error("Error fetching user role:", error.message);
-            setError("Failed to load user profile.");
-          } else {
-            setUserRole(profile.role);
-          }
-        } catch (err) {
-          console.error("Unexpected error:", err);
+useEffect(() => {
+  // Initial session check
+  supabase.auth.getSession().then(async ({ data: { session } }) => {
+    setSession(session);
+    if (session) {
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
+        
+        if (error) {
+          console.error("Error fetching user role:", error.message);
+          setError("Failed to load user profile.");
+          setUserRole(null);
+        } else {
+          setUserRole(profile.role);
+          setError(null);
         }
-      } else {
+      } catch (err) {
+        console.error("Unexpected error:", err);
+        setError("An unexpected error occurred.");
         setUserRole(null);
       }
-      setLoading(false);
-    });
+    } else {
+      setUserRole(null);
+      setError(null);
+    }
+    setLoading(false);
+  });
 
-    return () => subscription.unsubscribe();
-  }, []);
+  // Auth state change listener
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log('Auth event:', event); // Debug log
+    
+    setSession(session);
+    
+    if (event === 'SIGNED_OUT') {
+      // Handle sign out explicitly
+      setUserRole(null);
+      setJobs([]);
+      setWorkers([]);
+      setError(null);
+      setLoading(false);
+      return; // Exit early, don't try to fetch profile
+    }
+    
+    if (session) {
+      setLoading(true);
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
+        
+        if (error) {
+          console.error("Error fetching user role:", error.message);
+          setError("Failed to load user profile.");
+          setUserRole(null);
+        } else {
+          setUserRole(profile.role);
+          setError(null);
+        }
+      } catch (err) {
+        console.error("Unexpected error:", err);
+        setError("An unexpected error occurred.");
+        setUserRole(null);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setUserRole(null);
+      setError(null);
+      setLoading(false);
+    }
+  });
+
+  return () => subscription.unsubscribe();
+}, []);
 
   useEffect(() => {
     if (session && userRole) {
@@ -311,7 +343,28 @@ const addJob = async (jobData) => {
 
   const renderActiveComponent = () => {
     if (!userRole) return null;
-
+	
+// Get the allowed roles for current tab
+  const currentNav = allNavigation.find(item => item.id === activeTab);
+  
+// Security check: verify user has access to current tab
+  if (currentNav && !currentNav.roles.includes(userRole)) {
+	  console.warn(`Unauthorized access attempt: ${userRole} tried to access ${activeTab}`);
+    // Redirect to first allowed tab
+    const allowedTab = navigation[0];
+    if (allowedTab && allowedTab.id !== activeTab) {
+      console.log(`Redirecting ${userRole} to ${allowedTab.id}`);
+      setActiveTab(allowedTab.id);
+    }
+	    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting...</p>
+        </div>
+      </div>
+    );   
+  }
     switch (activeTab) {
       case 'submission':
         return <WorkerSubmission onSubmit={addJob} workers={workers} language={language} translations={translations} serviceTypes={serviceTypesData} />;
@@ -322,7 +375,11 @@ const addJob = async (jobData) => {
       case 'workers':
         return <WorkerManagement workers={workers} setWorkers={setWorkers} loadWorkers={loadWorkersFromDB} language={language} translations={translations} serviceTypes={serviceTypesData} />;
       default:
-        return null;
+		  const firstTab = navigation[0];
+		  if (firstTab) {
+			setActiveTab(firstTab.id);
+		  }
+		  return null;
     }
   };
 	useEffect(() => {
@@ -378,15 +435,20 @@ const addJob = async (jobData) => {
             <p className="font-bold">Profile Not Found</p>
             <p>Your user profile hasn't been set up yet. Please contact an administrator.</p>
           </div>
-          <button
-            onClick={async () => {
-              await supabase.auth.signOut();
-              window.location.reload();
-            }}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-          >
-            Sign Out
-          </button>
+			<button
+			  onClick={async () => {
+				try {
+				  const { error } = await supabase.auth.signOut();
+				  if (error) throw error;
+				} catch (error) {
+				  console.error('Sign out error:', error);
+				  alert('Error signing out. Please try again.');
+				}
+			  }}
+			  className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+			>
+			  Sign Out
+			</button>
         </div>
       </div>
     );
@@ -454,26 +516,26 @@ const addJob = async (jobData) => {
           {!sidebarCollapsed && (
             <LanguageSelector currentLanguage={language} onLanguageChange={setLanguage} />
           )}
-          <button
-            onClick={async () => {
-              try {
-                await supabase.auth.signOut();
-                window.location.reload();
-              } catch (error) {
-                console.error('Sign out error:', error);
-              }
-            }}
-            className={`w-full flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded transition-colors ${
-              sidebarCollapsed ? 'justify-center' : ''
-            }`}
-            title={sidebarCollapsed ? translations[language].signOut : ''}
-          >
-            <LogOut className={`w-5 h-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-2'}`} />
-            {!sidebarCollapsed && <span>{translations[language].signOut}</span>}
-          </button>
+			<button
+			  onClick={async () => {
+				try {
+				  const { error } = await supabase.auth.signOut();
+				  if (error) throw error;
+				} catch (error) {
+				  console.error('Sign out error:', error);
+				  alert('Error signing out. Please try again.');
+				}
+			  }}
+			  className={`w-full flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded transition-colors ${
+				sidebarCollapsed ? 'justify-center' : ''
+			  }`}
+			  title={sidebarCollapsed ? translations[language].signOut : ''}
+			>
+			  <LogOut className={`w-5 h-5 flex-shrink-0 ${sidebarCollapsed ? '' : 'mr-2'}`} />
+			  {!sidebarCollapsed && <span>{translations[language].signOut}</span>}
+			</button>
         </div>
       </div>
-
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
         {renderActiveComponent()}
