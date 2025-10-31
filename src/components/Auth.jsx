@@ -18,8 +18,8 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
 
 
   const languages = [
-    { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'pt', name: 'Português', flag: '🇧🇷' },
+    { code: 'en', name: 'English', flag: '馃嚭馃嚫' },
+    { code: 'pt', name: 'Portugu锚s', flag: '馃嚙馃嚪' },
   ];
 
   const roles = [
@@ -28,9 +28,9 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
       label: { en: 'Worker', pt: 'Trabalhador' },
       description: { 
         en: 'Submit work reports and track payments',
-        pt: 'Enviar relatórios de trabalho e rastrear pagamentos'
+        pt: 'Enviar relat贸rios de trabalho e rastrear pagamentos'
       },
-      icon: '👷',
+      icon: '馃懛',
       color: 'blue',
       requiresInvite: false
     },
@@ -39,9 +39,9 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
       label: { en: 'Manager', pt: 'Gerente' },
       description: { 
         en: 'Review jobs, manage workers, and generate reports',
-        pt: 'Revisar trabalhos, gerenciar trabalhadores e gerar relatórios'
+        pt: 'Revisar trabalhos, gerenciar trabalhadores e gerar relat贸rios'
       },
-      icon: '👔',
+      icon: '馃憯',
       color: 'purple',
       requiresInvite: true
     },
@@ -52,7 +52,7 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
         en: 'Full system access - manage everything',
         pt: 'Acesso total ao sistema - gerenciar tudo'
       },
-      icon: '⚙️',
+      icon: '鈿欙笍',
       color: 'red',
       requiresInvite: true
     }
@@ -119,7 +119,7 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
             throw new Error(
               language === 'en' 
                 ? 'Invite code is required for Manager/Admin roles' 
-                : 'Código de convite necessário para Gerente/Admin'
+                : 'C贸digo de convite necess谩rio para Gerente/Admin'
             );
           }
 
@@ -133,7 +133,7 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
             throw new Error(
               language === 'en' 
                 ? 'Invalid or expired invite code. Please contact your administrator.' 
-                : 'Código de convite inválido ou expirado. Contate o administrador.'
+                : 'C贸digo de convite inv谩lido ou expirado. Contate o administrador.'
             );
           }
         }
@@ -141,7 +141,7 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
 		  throw new Error(
 			language === 'en'
 			  ? 'Passwords do not match'
-			  : 'As senhas não coincidem'
+			  : 'As senhas n茫o coincidem'
 		  );
 		}
         // Create the user
@@ -183,7 +183,7 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
             type: 'success', 
             text: language === 'en' 
               ? 'Account created! Check your email for confirmation.' 
-              : 'Conta criada! Verifique seu email para confirmação.'
+              : 'Conta criada! Verifique seu email para confirma莽茫o.'
           });
           
           // Clear form
@@ -277,10 +277,10 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">
-            {language === 'en' ? 'Construction Business Management' : 'Gestão de Negócios de Construção'}
+            {language === 'en' ? 'Construction Business Management' : 'Gest茫o de Neg贸cios de Constru莽茫o'}
           </h1>
           <p className="text-gray-600 text-sm">
-            {language === 'en' ? 'Project management designed for teams' : 'Gestão de projetos para equipes'}
+            {language === 'en' ? 'Project management designed for teams' : 'Gest茫o de projetos para equipes'}
           </p>
         </div>
 
@@ -313,7 +313,7 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
                       type="text"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      placeholder={language === 'en' ? 'John Doe' : 'João Silva'}
+                      placeholder={language === 'en' ? 'John Doe' : 'Jo茫o Silva'}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
@@ -338,7 +338,7 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
                       <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
                         {language === 'en' 
                           ? 'Worker role is open to all. Manager and Admin roles require an invite code from the database.' 
-                          : 'Papel de Trabalhador é aberto. Gerente e Admin requerem código de convite.'}
+                          : 'Papel de Trabalhador 茅 aberto. Gerente e Admin requerem c贸digo de convite.'}
                       </div>
                     )}
 
@@ -370,7 +370,7 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
                               </div>
                               {role.requiresInvite && (
                                 <div className="text-xs text-orange-600 mt-1 font-medium">
-                                  {language === 'en' ? '🔒 Requires invite code' : '🔒 Requer código de convite'}
+                                  {language === 'en' ? '馃敀 Requires invite code' : '馃敀 Requer c贸digo de convite'}
                                 </div>
                               )}
                             </div>
@@ -392,27 +392,26 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                       <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                         <Lock className="w-4 h-4 mr-2 text-orange-600" />
-                        {language === 'en' ? 'Invite Code' : 'Código de Convite'}
+                        {language === 'en' ? 'Invite Code' : 'C贸digo de Convite'}
                         <span className="text-red-500 ml-1">*</span>
                       </label>
                       <input
                         type="text"
                         value={inviteCode}
                         onChange={(e) => setInviteCode(e.target.value)}
-                        placeholder={language === 'en' ? 'Enter invite code' : 'Digite o código'}
+                        placeholder={language === 'en' ? 'Enter invite code' : 'Digite o c贸digo'}
                         className="w-full px-4 py-3 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                         required
                       />
                       <p className="text-xs text-gray-600 mt-2">
                         {language === 'en' 
                           ? 'Contact your administrator to get an invite code for this role.' 
-                          : 'Contate o administrador para obter o código de convite.'}
+                          : 'Contate o administrador para obter o c贸digo de convite.'}
                       </p>
                     </div>
                   )}
                 </>
               )}
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {language === 'en' ? 'Email' : 'E-mail'}
@@ -426,7 +425,7 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
                   required
                 />
               </div>
-
+			  
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {language === 'en' ? 'Password' : 'Senha'}
@@ -435,48 +434,46 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="•••••••�?
+                  placeholder="••••••••"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
                   minLength={6}
                 />
+                {isSignUp && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    {language === 'en' ? 'Minimum 6 characters' : 'Mínimo 6 caracteres'}
+                  </p>
+                )}
               </div>
-			{isSignUp && (
-			  <div>
-				<label className="block text-sm font-medium text-gray-700 mb-2">
-				  {language === 'en' ? 'Confirm Password' : 'Confirmar Senha'}
-				</label>
-				<input
-				  type="password"
-				  value={confirmPassword}
-				  onChange={(e) => setConfirmPassword(e.target.value)}
-				  placeholder="•••••••�?
-				  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors ${
-					confirmPassword
-					  ? passwordsMatch
-						? 'border-green-400 focus:ring-green-500'
-						: 'border-red-400 focus:ring-red-500'
-					  : 'border-gray-300'
-				  }`}
-				  required
-				  minLength={6}
-				/>
-				{confirmPassword && (
-				  <p
-					className={`text-sm mt-1 ${
-					  passwordsMatch ? 'text-green-600' : 'text-red-600'
-					}`}
-				  >
-					{passwordsMatch
-					  ? language === 'en'
-						? '�?Passwords match'
-						: '�?As senhas coincidem'
-					  : language === 'en'
-						? '�?Passwords do not match'
-						: '�?As senhas não coincidem'}
-				  </p>
-				)}
-			  </div>
+			  
+             {isSignUp && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {language === 'en' ? 'Confirm Password' : 'Confirmar Senha'}
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 ${
+                      confirmPassword && password !== confirmPassword
+                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
+                    required
+                  />
+                  {confirmPassword && password !== confirmPassword && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {language === 'en' ? 'Passwords do not match' : 'As senhas não correspondem'}
+                    </p>
+                  )}
+                  {confirmPassword && password === confirmPassword && (
+                    <p className="mt-1 text-xs text-green-600">
+                      {language === 'en' ? '✓ Passwords match' : '✓ Senhas correspondem'}
+                    </p>
+                  )}
+                </div>
 			)}
 			<button
 			  type="submit"
@@ -503,8 +500,8 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 {isSignUp 
-                  ? (language === 'en' ? 'Already have an account? ' : 'Já tem uma conta? ')
-                  : (language === 'en' ? "Don't have an account yet? " : 'Ainda não tem uma conta? ')
+                  ? (language === 'en' ? 'Already have an account? ' : 'J谩 tem uma conta? ')
+                  : (language === 'en' ? "Don't have an account yet? " : 'Ainda n茫o tem uma conta? ')
                 }
                 <button
                   onClick={() => {
