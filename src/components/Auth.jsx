@@ -63,6 +63,7 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
   // VALIDATE INVITE CODE FROM SUPABASE
   const validateInviteCode = async (role, code) => {
     if (role === 'worker') return true; // Workers don't need codes
+	console.log('?? VALIDATING:', { role, code: code.trim() });
     
     try {
       // Call the Supabase function to validate and use the code
@@ -70,6 +71,7 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
         p_code: code.trim(),
         p_role: role
       });
+	  console.log('RESULT:', { data, error });
 
       if (error) {
         console.error('Invite code validation error:', error);
@@ -433,7 +435,7 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="•••••••�?
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
                   minLength={6}
@@ -448,7 +450,7 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
 				  type="password"
 				  value={confirmPassword}
 				  onChange={(e) => setConfirmPassword(e.target.value)}
-				  placeholder="••••••••"
+				  placeholder="•••••••�?
 				  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors ${
 					confirmPassword
 					  ? passwordsMatch
@@ -467,11 +469,11 @@ const Auth = ({ language = 'en', setLanguage, translations = {} }) => {
 				  >
 					{passwordsMatch
 					  ? language === 'en'
-						? '✅ Passwords match'
-						: '✅ As senhas coincidem'
+						? '�?Passwords match'
+						: '�?As senhas coincidem'
 					  : language === 'en'
-						? '❌ Passwords do not match'
-						: '❌ As senhas não coincidem'}
+						? '�?Passwords do not match'
+						: '�?As senhas não coincidem'}
 				  </p>
 				)}
 			  </div>

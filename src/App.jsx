@@ -275,17 +275,17 @@ useEffect(() => {
     
     setSession(session);
     
-    if (event === 'SIGNED_OUT') {
-      // Handle sign out explicitly
+    // Handle sign out explicitly
+    if (event === 'SIGNED_OUT' || !session) {
       setUserRole(null);
       setJobs([]);
       setWorkers([]);
       setError(null);
       setLoading(false);
-      return; // Exit early, don't try to fetch profile
+      return;
     }
     
-    if (session) {
+    if (session && event === 'SIGNED_IN') {
       setLoading(true);
       try {
         const { data: profile, error } = await supabase
@@ -309,15 +309,12 @@ useEffect(() => {
       } finally {
         setLoading(false);
       }
-    } else {
-      setUserRole(null);
-      setError(null);
-      setLoading(false);
     }
   });
 
   return () => subscription.unsubscribe();
 }, []);
+
 
   useEffect(() => {
     if (session && userRole) {
@@ -438,11 +435,15 @@ useEffect(() => {
 			<button
 			  onClick={async () => {
 				try {
+				  setLoading(true);
 				  const { error } = await supabase.auth.signOut();
 				  if (error) throw error;
+				  // Don't manually set state - let the listener handle it
 				} catch (error) {
 				  console.error('Sign out error:', error);
-				  alert('Error signing out. Please try again.');
+				  setError('Error signing out: ' + error.message);
+				} finally {
+				  setLoading(false);
 				}
 			  }}
 			  className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
@@ -519,11 +520,15 @@ useEffect(() => {
 			<button
 			  onClick={async () => {
 				try {
+				  setLoading(true);
 				  const { error } = await supabase.auth.signOut();
 				  if (error) throw error;
+				  // Don't manually set state - let the listener handle it
 				} catch (error) {
 				  console.error('Sign out error:', error);
 				  alert('Error signing out. Please try again.');
+				} finally {
+				  setLoading(false);
 				}
 			  }}
 			  className={`w-full flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded transition-colors ${
