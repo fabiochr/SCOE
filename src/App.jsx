@@ -177,27 +177,45 @@ const loadWorkersFromDB = async () => {
 
 // Add job to Supabase
 const addJob = async (jobData) => {
-  const { data, error } = await supabase
-    .from('jobs')
-    .insert([{
-      worker_id: jobData.workerId,
-      service_type: jobData.serviceType,
-      location: jobData.location,
-      date: jobData.date,
-      description: jobData.description,
-      amount: jobData.amount,
-      payment_method: jobData.paymentMethod === 'other' ? jobData.otherPaymentMethod : jobData.paymentMethod,
-      payment_status: 'pending',
-      images: jobData.images || []
-    }])
-    .select();
+  console.log('📝 Submitting job data:', jobData); // Debug log
   
-  if (error) {
-    console.error('Error adding job:', error);
-    alert('Error saving job. Please try again.');
-  } else {
-    await loadJobsFromDB(); // Reload jobs
-    alert('Job submitted successfully!');
+  try {
+    const { data, error } = await supabase
+      .from('jobs')
+      .insert([{
+        worker_id: jobData.workerId,
+        service_type: jobData.serviceType,
+        location: jobData.location || null,
+        start_date: jobData.startDate, // NEW: start date instead of date
+        end_date: jobData.endDate || null, // NEW: end date
+        description: jobData.description || null,
+        amount: jobData.amount ? parseFloat(jobData.amount) : null,
+        payment_method: jobData.paymentMethod === 'other' 
+          ? jobData.otherPaymentMethod 
+          : jobData.paymentMethod || null,
+        payment_status: 'pending',
+        status: jobData.endDate && new Date(jobData.endDate) < new Date() 
+          ? 'completed' 
+          : 'in_progress', // NEW: status field
+        images: jobData.images || []
+      }])
+      .select();
+  
+    if (error) {
+      console.error('❌ Supabase error:', error);
+      throw error;
+    }
+    
+    console.log('✅ Job saved successfully:', data);
+    
+    // Reload jobs from database
+    await loadJobsFromDB();
+    
+    alert(translations[language]?.submissionSuccess || 'Job submitted successfully!');
+  } catch (error) {
+    console.error('💥 Error adding job:', error);
+    alert('Error saving job: ' + error.message);
+    throw error;
   }
 };
 
@@ -234,13 +252,17 @@ const addJob = async (jobData) => {
     }
   };
 
-// FIND THIS SECTION in your App.jsx (around line 240-280)
-// REPLACE the entire useEffect with auth state management
-
 useEffect(() => {
+  let mounted = true;
+
   // Initial session check
   supabase.auth.getSession().then(async ({ data: { session } }) => {
+    if (!mounted) return;
+    
+    console.log('Initial session check:', session ? 'Logged in' : 'Not logged in');
+    
     setSession(session);
+    
     if (session) {
       try {
         const { data: profile, error } = await supabase
@@ -248,6 +270,8 @@ useEffect(() => {
           .select("role")
           .eq("id", session.user.id)
           .single();
+        
+        if (!mounted) return;
         
         if (error) {
           console.error("Error fetching user role:", error.message);
@@ -258,6 +282,7 @@ useEffect(() => {
           setError(null);
         }
       } catch (err) {
+        if (!mounted) return;
         console.error("Unexpected error:", err);
         setError("An unexpected error occurred.");
         setUserRole(null);
@@ -266,7 +291,10 @@ useEffect(() => {
       setUserRole(null);
       setError(null);
     }
-    setLoading(false);
+    
+    if (mounted) {
+      setLoading(false);
+    }
   });
 
   // Auth state change listener
@@ -276,16 +304,21 @@ useEffect(() => {
     setSession(session);
     
     // Handle sign out explicitly
-    if (event === 'SIGNED_OUT' || !session) {
+     if (event === 'SIGNED_OUT') {
+      console.log('👋 User signed out');
+      setSession(null);
       setUserRole(null);
       setJobs([]);
       setWorkers([]);
       setError(null);
       setLoading(false);
-      return;
+      return; // IMPORTANT: Exit immediately
     }
     
-    if (session && event === 'SIGNED_IN') {
+    // Handle other events
+    setSession(session);
+    
+    if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
       setLoading(true);
       try {
         const { data: profile, error } = await supabase
@@ -293,6 +326,8 @@ useEffect(() => {
           .select("role")
           .eq("id", session.user.id)
           .single();
+        
+        if (!mounted) return;
         
         if (error) {
           console.error("Error fetching user role:", error.message);
@@ -303,18 +338,27 @@ useEffect(() => {
           setError(null);
         }
       } catch (err) {
+        if (!mounted) return;
         console.error("Unexpected error:", err);
         setError("An unexpected error occurred.");
         setUserRole(null);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
+    } else if (!session) {
+      setUserRole(null);
+      setError(null);
+      setLoading(false);
     }
   });
 
-  return () => subscription.unsubscribe();
+  return () => {
+    mounted = false;
+    subscription.unsubscribe();
+  };
 }, []);
-
 
   useEffect(() => {
     if (session && userRole) {
@@ -434,16 +478,17 @@ useEffect(() => {
           </div>
 			<button
 			  onClick={async () => {
+				console.log('🚪 Signing out from error screen...');
 				try {
-				  setLoading(true);
 				  const { error } = await supabase.auth.signOut();
-				  if (error) throw error;
-				  // Don't manually set state - let the listener handle it
+				  if (error) {
+					console.error('Sign out error:', error);
+					alert('Error signing out: ' + error.message);
+				  }
+				  // Don't set any state - listener will handle it
 				} catch (error) {
-				  console.error('Sign out error:', error);
-				  setError('Error signing out: ' + error.message);
-				} finally {
-				  setLoading(false);
+				  console.error('Sign out exception:', error);
+				  alert('Error signing out: ' + error.message);
 				}
 			  }}
 			  className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
@@ -519,16 +564,17 @@ useEffect(() => {
           )}
 			<button
 			  onClick={async () => {
+				console.log('🚪 Signing out from sidebar...');
 				try {
-				  setLoading(true);
 				  const { error } = await supabase.auth.signOut();
-				  if (error) throw error;
-				  // Don't manually set state - let the listener handle it
+				  if (error) {
+					console.error('Sign out error:', error);
+					alert('Error signing out. Please try again.');
+				  }
+				  // Don't set any state - listener will handle it
 				} catch (error) {
-				  console.error('Sign out error:', error);
-				  alert('Error signing out. Please try again.');
-				} finally {
-				  setLoading(false);
+				  console.error('Sign out exception:', error);
+				  alert('Error signing out: ' + error.message);
 				}
 			  }}
 			  className={`w-full flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded transition-colors ${
